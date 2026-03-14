@@ -65,11 +65,17 @@ class StickyHostingView<Content: View>: NSHostingView<Content> {
     }
 
     override func mouseDragged(with event: NSEvent) {
-        if let initialEvent = storedMouseDownEvent {
-            storedMouseDownEvent = nil
-            window?.performDrag(with: initialEvent)  // ドラッグ開始
-        } else {
+        guard let initialEvent = storedMouseDownEvent else {
             super.mouseDragged(with: event)
+            return
+        }
+        // 5pt 以上動いた場合のみドラッグとみなす
+        let dx = event.locationInWindow.x - initialEvent.locationInWindow.x
+        let dy = event.locationInWindow.y - initialEvent.locationInWindow.y
+        let distance = sqrt(dx * dx + dy * dy)
+        if distance > 5 {
+            storedMouseDownEvent = nil
+            window?.performDrag(with: initialEvent)
         }
     }
 
@@ -102,12 +108,12 @@ struct StickyNoteView: View {
             // テキスト表示 / 編集
             Group {
                 if isEditing {
-                    TextEditor(text: $editText)
+                    TextField("メモを入力...", text: $editText)
+                        .textFieldStyle(.plain)
                         .font(.system(size: 12.5, weight: .regular, design: .rounded))
-                        .scrollContentBackground(.hidden)
-                        .background(.clear)
-                        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
+                        .frame(maxWidth: .infinity, minHeight: 20, maxHeight: 20)
                         .focused($editorFocused)
+                        .onSubmit { saveEdit() }
                         .onChange(of: editorFocused) { focused in
                             if !focused { saveEdit() }
                         }
@@ -119,9 +125,10 @@ struct StickyNoteView: View {
                                 ? .secondary
                                 : .black.opacity(0.82)
                         )
-                        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
-                        .lineLimit(2)
+                        .frame(maxWidth: .infinity, minHeight: 20, maxHeight: 20)
+                        .lineLimit(1)
                         .contentShape(Rectangle())
+                        .allowsHitTesting(true)
                         .onTapGesture(count: 2) {
                             editText = memo.content
                             isEditing = true

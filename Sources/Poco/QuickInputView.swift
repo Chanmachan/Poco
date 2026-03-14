@@ -24,12 +24,12 @@ struct QuickInputView: View {
             Divider()
 
             HStack {
-                Label("return で保存", systemImage: "return")
-                    .font(.caption)
+                Text("⏎  保存")
+                    .font(.system(size: 10, weight: .medium, design: .monospaced))
                     .foregroundColor(.secondary)
                 Spacer()
-                Label("esc でキャンセル", systemImage: "escape")
-                    .font(.caption)
+                Text("esc  キャンセル")
+                    .font(.system(size: 10, weight: .medium, design: .monospaced))
                     .foregroundColor(.secondary)
             }
         }

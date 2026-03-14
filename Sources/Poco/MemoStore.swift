@@ -13,6 +13,7 @@ class MemoStore: ObservableObject {
     init(persistence: PersistenceController = .shared) {
         self.persistence = persistence
         fetchMemos()
+        purgeOldArchivedMemos()
 
         NotificationCenter.default.addObserver(
             self,
@@ -118,6 +119,17 @@ class MemoStore: ObservableObject {
     func deleteMemo(_ memo: MemoEntity) {
         context.delete(memo)
         persistence.save()
+    }
+
+    // MARK: - Auto Purge
+
+    func purgeOldArchivedMemos(olderThan days: Int = 30) {
+        let cutoff = Calendar.current.date(byAdding: .day, value: -days, to: Date()) ?? Date()
+        let toDelete = archivedMemos.filter {
+            ($0.completedAt ?? Date.distantPast) < cutoff
+        }
+        toDelete.forEach { context.delete($0) }
+        if !toDelete.isEmpty { persistence.save() }
     }
 
     // MARK: - Helpers

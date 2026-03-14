@@ -59,6 +59,15 @@ struct ArchiveView: View {
                                     .clipShape(Capsule())
                             }
                             .buttonStyle(.plain)
+
+                            Button(action: {
+                                memoStore.deleteMemo(memo)
+                            }) {
+                                Image(systemName: "trash")
+                                    .font(.system(size: 12))
+                                    .foregroundColor(.red.opacity(0.7))
+                            }
+                            .buttonStyle(.plain)
                         }
                         .padding(.horizontal, 14)
                         .padding(.vertical, 10)
@@ -106,6 +115,15 @@ struct ArchiveView: View {
                                     .padding(.vertical, 5)
                                     .background(Color(hex: "#007AFF"))
                                     .clipShape(Capsule())
+                            }
+                            .buttonStyle(.plain)
+
+                            Button(action: {
+                                memoStore.deleteMemo(memo)
+                            }) {
+                                Image(systemName: "trash")
+                                    .font(.system(size: 12))
+                                    .foregroundColor(.red.opacity(0.7))
                             }
                             .buttonStyle(.plain)
                         }

@@ -11,10 +11,11 @@ struct QuickInputView: View {
     let onCancel: () -> Void
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            TextField("ここにメモを入力...", text: $text)
+        VStack(alignment: .leading, spacing: 6) {
+            TextField("メモを入力...", text: $text)
                 .textFieldStyle(.plain)
-                .font(.system(size: 15))
+                .font(.system(size: 14, weight: .regular, design: .rounded))
+                .foregroundColor(.white)
                 .focused($isFocused)
                 .onSubmit {
                     let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -23,20 +24,29 @@ struct QuickInputView: View {
                     }
                 }
 
-            Text("Enter: 保存  Esc: キャンセル")
-                .font(.caption)
-                .foregroundColor(.secondary)
+            Divider().background(Color.white.opacity(0.15))
+
+            HStack {
+                Text("return 保存")
+                    .font(.system(size: 10))
+                    .foregroundColor(.white.opacity(0.4))
+                Spacer()
+                Text("esc キャンセル")
+                    .font(.system(size: 10))
+                    .foregroundColor(.white.opacity(0.4))
+            }
         }
-        .padding(16)
-        .frame(width: 288)  // 320 - 2*16 padding
+        .padding(.horizontal, 16)
+        .padding(.vertical, 12)
+        .frame(width: 320)
         .background(
-            RoundedRectangle(cornerRadius: 12)
-                .fill(.regularMaterial)
+            RoundedRectangle(cornerRadius: 14)
+                .fill(Color(red: 0.13, green: 0.13, blue: 0.15).opacity(0.95))
+                .shadow(color: .black.opacity(0.4), radius: 20, x: 0, y: 8)
         )
         .onAppear {
             isFocused = true
         }
-        // Escape is handled via NSEvent monitor in QuickInputWindowController (macOS 13 compatible)
     }
 }
 
@@ -51,28 +61,16 @@ class QuickInputWindowController {
 
         let panel = NSPanel(
             contentRect: NSRect(x: 0, y: 0, width: 320, height: 90),
-            styleMask: [.titled, .closable, .fullSizeContentView, .hudWindow],
+            styleMask: [.borderless, .fullSizeContentView],
             backing: .buffered,
             defer: false
         )
-        panel.titleVisibility = .hidden
-        panel.titlebarAppearsTransparent = true
         panel.isFloatingPanel = true
         panel.hidesOnDeactivate = false
         panel.level = .statusBar + 1
-        panel.backgroundColor = .clear
+        panel.backgroundColor = NSColor(red: 0.13, green: 0.13, blue: 0.15, alpha: 0.92)
         panel.isOpaque = false
         panel.hasShadow = true
-        panel.standardWindowButton(.closeButton)?.isHidden = true
-        panel.standardWindowButton(.miniaturizeButton)?.isHidden = true
-        panel.standardWindowButton(.zoomButton)?.isHidden = true
-
-        // Position: screen center, y = 200pt from top
-        if let screen = NSScreen.main {
-            let x = screen.frame.midX - 160
-            let y = screen.frame.maxY - 200 - 90
-            panel.setFrameOrigin(NSPoint(x: x, y: y))
-        }
 
         let view = QuickInputView(
             onSave: { [weak self] text in
@@ -85,8 +83,17 @@ class QuickInputWindowController {
         )
 
         let hostingView = NSHostingView(rootView: view)
-        hostingView.frame = NSRect(x: 0, y: 0, width: 320, height: 90)
+        hostingView.frame = panel.contentView!.bounds
+        let fittingSize = hostingView.fittingSize
+        panel.setContentSize(fittingSize)
         panel.contentView = hostingView
+
+        // Position: screen center, y = 200pt from top
+        if let screen = NSScreen.main {
+            let x = screen.frame.midX - panel.frame.width / 2
+            let y = screen.frame.maxY - 200 - panel.frame.height
+            panel.setFrameOrigin(NSPoint(x: x, y: y))
+        }
 
         // Escape key monitor for cases where SwiftUI onKeyPress may not fire
         localEventMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in

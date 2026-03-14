@@ -48,6 +48,9 @@ enum StickyColor: String, CaseIterable {
     }
 
     var backgroundColor: Color { Color(hex: rawValue) }
+    var accentColor: Color     { Color(hex: headerHex) }
+
+    // Keep headerColor as alias for compatibility
     var headerColor: Color     { Color(hex: headerHex) }
 
     static func from(_ hex: String) -> StickyColor {
@@ -63,6 +66,9 @@ struct StickyNoteView: View {
 
     @State private var opacity: Double = 1.0
     @State private var showDeleteConfirm = false
+    @State private var isEditing = false
+    @State private var editText = ""
+    @FocusState private var editorFocused: Bool
 
     var onComplete: (() -> Void)?
 
@@ -71,35 +77,51 @@ struct StickyNoteView: View {
     }
 
     var body: some View {
-        VStack(spacing: 0) {
-            // Header
-            HStack {
-                Button(action: startComplete) {
+        HStack(alignment: .center, spacing: 10) {
+            // Check button - small circle on left (16pt)
+            Button(action: startComplete) {
+                ZStack {
+                    Circle()
+                        .strokeBorder(stickyColor.accentColor, lineWidth: 1.5)
+                        .frame(width: 16, height: 16)
                     Image(systemName: "checkmark")
-                        .font(.system(size: 13, weight: .semibold))
-                        .foregroundColor(.white)
+                        .font(.system(size: 8, weight: .bold))
+                        .foregroundColor(stickyColor.accentColor)
                 }
-                .buttonStyle(.plain)
-                .padding(.leading, 10)
-
-                Spacer()
             }
-            .frame(height: 30)
-            .background(stickyColor.headerColor)
+            .buttonStyle(.plain)
+            .frame(width: 16, height: 16)
 
-            // Body
-            ScrollView {
-                Text(memo.content)
+            // Content area
+            if isEditing {
+                TextEditor(text: $editText)
                     .font(.system(size: 13))
-                    .foregroundColor(.black.opacity(0.85))
-                    .frame(maxWidth: .infinity, alignment: .topLeading)
-                    .padding(10)
+                    .scrollContentBackground(.hidden)
+                    .background(.clear)
+                    .focused($editorFocused)
+                    .onChange(of: editorFocused) { focused in
+                        if !focused { saveEdit() }
+                    }
+            } else {
+                Text(memo.content.isEmpty ? "テキストを入力..." : memo.content)
+                    .font(.system(size: 13))
+                    .foregroundColor(memo.content.isEmpty ? .secondary : .black.opacity(0.82))
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+                    .lineLimit(nil)
+                    .contentShape(Rectangle())
+                    .onTapGesture {
+                        editText = memo.content
+                        isEditing = true
+                        editorFocused = true
+                    }
             }
-            .background(stickyColor.backgroundColor)
         }
-        .frame(width: 220, height: 140)
-        .clipShape(RoundedRectangle(cornerRadius: 8))
-        .shadow(color: .black.opacity(0.2), radius: 4, x: 0, y: 2)
+        .padding(.horizontal, 12)
+        .padding(.vertical, 10)
+        .frame(width: 260, height: 80)
+        .background(stickyColor.backgroundColor)
+        .clipShape(RoundedRectangle(cornerRadius: 12))
+        .shadow(color: .black.opacity(0.22), radius: 10, x: 0, y: 5)
         .opacity(opacity)
         .contextMenu {
             ForEach(StickyColor.allCases, id: \.rawValue) { color in
@@ -118,6 +140,14 @@ struct StickyNoteView: View {
             }
             Button("キャンセル", role: .cancel) {}
         }
+    }
+
+    private func saveEdit() {
+        let trimmed = editText.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !trimmed.isEmpty {
+            memoStore.updateContent(memo, content: trimmed)
+        }
+        isEditing = false
     }
 
     private func startComplete() {
@@ -146,7 +176,7 @@ class StickyNoteWindowController {
         self.memoStore = memoStore
 
         let win = NSWindow(
-            contentRect: NSRect(x: memo.positionX, y: memo.positionY, width: 220, height: 140),
+            contentRect: NSRect(x: memo.positionX, y: memo.positionY, width: 260, height: 80),
             styleMask: .borderless,
             backing: .buffered,
             defer: false

@@ -98,6 +98,21 @@ class MemoStore: ObservableObject {
         persistence.save()
     }
 
+    // MARK: - Complete from Archive window
+
+    func completeMemoFromArchive(_ memo: MemoEntity) {
+        memo.status = "archived"
+        memo.completedAt = Date()
+        persistence.save()
+    }
+
+    // MARK: - Update Content
+
+    func updateContent(_ memo: MemoEntity, content: String) {
+        memo.content = content
+        persistence.save()
+    }
+
     // MARK: - Delete
 
     func deleteMemo(_ memo: MemoEntity) {
@@ -113,6 +128,6 @@ class MemoStore: ObservableObject {
             return (100 + offset, 100 + offset)
         }
         let screenHeight = screen.frame.height
-        return (100 + offset, screenHeight - 200 - 140 - offset)
+        return (100 + offset, screenHeight - 200 - 80 - offset)
     }
 }

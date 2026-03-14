@@ -10,12 +10,12 @@ struct ArchiveView: View {
     var body: some View {
         VStack(spacing: 0) {
             Picker("", selection: $selectedTab) {
-                Text("📋 未完了").tag(0)
-                Text("✅ 完了済み").tag(1)
+                Text("未完了").tag(0)
+                Text("完了済み").tag(1)
             }
             .pickerStyle(.segmented)
-            .padding(.horizontal, 16)
-            .padding(.vertical, 12)
+            .padding(.horizontal, 20)
+            .padding(.vertical, 14)
 
             Divider()
 
@@ -25,7 +25,8 @@ struct ArchiveView: View {
                 completedTab
             }
         }
-        .frame(width: 500, height: 420)
+        .frame(width: 480, height: 520)
+        .background(Color(nsColor: .windowBackgroundColor))
     }
 
     @ViewBuilder
@@ -33,27 +34,44 @@ struct ArchiveView: View {
         if memoStore.activeMemos.isEmpty {
             emptyStateView(icon: "note.text", message: "アクティブなメモはありません")
         } else {
-            List(memoStore.activeMemos, id: \.objectID) { memo in
-                HStack(spacing: 12) {
-                    RoundedRectangle(cornerRadius: 3)
-                        .fill(Color(hex: memo.color))
-                        .frame(width: 6, height: 36)
+            ScrollView {
+                LazyVStack(spacing: 8) {
+                    ForEach(memoStore.activeMemos, id: \.objectID) { memo in
+                        HStack(spacing: 12) {
+                            RoundedRectangle(cornerRadius: 3)
+                                .fill(Color(hex: memo.color))
+                                .frame(width: 5, height: 32)
 
-                    Text(memo.content)
-                        .font(.body)
-                        .lineLimit(2)
-                        .frame(maxWidth: .infinity, alignment: .leading)
+                            Text(memo.content)
+                                .font(.system(size: 13, design: .rounded))
+                                .lineLimit(2)
+                                .frame(maxWidth: .infinity, alignment: .leading)
 
-                    Button("完了") {
-                        memoStore.completeMemoFromArchive(memo)
+                            Button(action: {
+                                memoStore.completeMemoFromArchive(memo)
+                            }) {
+                                Text("完了")
+                                    .font(.system(size: 11, weight: .medium))
+                                    .foregroundColor(.white)
+                                    .padding(.horizontal, 12)
+                                    .padding(.vertical, 5)
+                                    .background(Color(hex: "#34C759"))
+                                    .clipShape(Capsule())
+                            }
+                            .buttonStyle(.plain)
+                        }
+                        .padding(.horizontal, 14)
+                        .padding(.vertical, 10)
+                        .background(
+                            RoundedRectangle(cornerRadius: 10)
+                                .fill(Color(nsColor: .controlBackgroundColor))
+                                .shadow(color: .black.opacity(0.06), radius: 4, x: 0, y: 2)
+                        )
                     }
-                    .buttonStyle(.borderedProminent)
-                    .controlSize(.small)
-                    .tint(Color(hex: "#2E7D32").opacity(0.85))
                 }
-                .padding(.vertical, 4)
+                .padding(.horizontal, 16)
+                .padding(.vertical, 12)
             }
-            .listStyle(.inset)
         }
     }
 
@@ -62,30 +80,47 @@ struct ArchiveView: View {
         if memoStore.archivedMemos.isEmpty {
             emptyStateView(icon: "checkmark.circle", message: "完了済みメモはありません")
         } else {
-            List(memoStore.archivedMemos, id: \.objectID) { memo in
-                HStack(spacing: 12) {
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text(memo.content)
-                            .font(.body)
-                            .lineLimit(2)
-                        if let completedAt = memo.completedAt {
-                            Text("完了: " + dateString(from: completedAt))
-                                .font(.caption)
-                                .foregroundColor(.secondary)
-                        }
-                    }
-                    .frame(maxWidth: .infinity, alignment: .leading)
+            ScrollView {
+                LazyVStack(spacing: 8) {
+                    ForEach(memoStore.archivedMemos, id: \.objectID) { memo in
+                        HStack(spacing: 12) {
+                            VStack(alignment: .leading, spacing: 3) {
+                                Text(memo.content)
+                                    .font(.system(size: 13, design: .rounded))
+                                    .lineLimit(2)
+                                if let completedAt = memo.completedAt {
+                                    Text("完了: " + dateString(from: completedAt))
+                                        .font(.caption)
+                                        .foregroundColor(.secondary)
+                                }
+                            }
+                            .frame(maxWidth: .infinity, alignment: .leading)
 
-                    Button("未完了に戻す") {
-                        memoStore.restoreMemo(memo)
+                            Button(action: {
+                                memoStore.restoreMemo(memo)
+                            }) {
+                                Text("未完了に戻す")
+                                    .font(.system(size: 11, weight: .medium))
+                                    .foregroundColor(.white)
+                                    .padding(.horizontal, 12)
+                                    .padding(.vertical, 5)
+                                    .background(Color(hex: "#007AFF"))
+                                    .clipShape(Capsule())
+                            }
+                            .buttonStyle(.plain)
+                        }
+                        .padding(.horizontal, 14)
+                        .padding(.vertical, 10)
+                        .background(
+                            RoundedRectangle(cornerRadius: 10)
+                                .fill(Color(nsColor: .controlBackgroundColor))
+                                .shadow(color: .black.opacity(0.06), radius: 4, x: 0, y: 2)
+                        )
                     }
-                    .buttonStyle(.bordered)
-                    .controlSize(.small)
-                    .clipShape(Capsule())
                 }
-                .padding(.vertical, 4)
+                .padding(.horizontal, 16)
+                .padding(.vertical, 12)
             }
-            .listStyle(.inset)
         }
     }
 
@@ -121,7 +156,7 @@ class ArchiveWindowController: NSWindowController {
         self.memoStore = memoStore
 
         let window = NSWindow(
-            contentRect: NSRect(x: 0, y: 0, width: 500, height: 420),
+            contentRect: NSRect(x: 0, y: 0, width: 480, height: 520),
             styleMask: [.titled, .closable, .resizable, .miniaturizable],
             backing: .buffered,
             defer: false

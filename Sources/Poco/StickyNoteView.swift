@@ -68,6 +68,7 @@ struct StickyNoteView: View {
     @State private var showDeleteConfirm = false
     @State private var isEditing = false
     @State private var editText = ""
+    @State private var isCheckHovered = false
     @FocusState private var editorFocused: Bool
 
     var onComplete: (() -> Void)?
@@ -78,24 +79,10 @@ struct StickyNoteView: View {
 
     var body: some View {
         HStack(alignment: .center, spacing: 10) {
-            // Check button - small circle on left (16pt)
-            Button(action: startComplete) {
-                ZStack {
-                    Circle()
-                        .strokeBorder(stickyColor.accentColor, lineWidth: 1.5)
-                        .frame(width: 16, height: 16)
-                    Image(systemName: "checkmark")
-                        .font(.system(size: 8, weight: .bold))
-                        .foregroundColor(stickyColor.accentColor)
-                }
-            }
-            .buttonStyle(.plain)
-            .frame(width: 16, height: 16)
-
             // Content area
             if isEditing {
                 TextEditor(text: $editText)
-                    .font(.system(size: 13))
+                    .font(.system(size: 12.5, weight: .regular, design: .rounded))
                     .scrollContentBackground(.hidden)
                     .background(.clear)
                     .focused($editorFocused)
@@ -104,24 +91,40 @@ struct StickyNoteView: View {
                     }
             } else {
                 Text(memo.content.isEmpty ? "テキストを入力..." : memo.content)
-                    .font(.system(size: 13))
+                    .font(.system(size: 12.5, weight: .regular, design: .rounded))
                     .foregroundColor(memo.content.isEmpty ? .secondary : .black.opacity(0.82))
-                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-                    .lineLimit(nil)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
+                    .lineLimit(2)
                     .contentShape(Rectangle())
-                    .onTapGesture {
+                    .onTapGesture(count: 2) {
                         editText = memo.content
                         isEditing = true
                         editorFocused = true
                     }
             }
+
+            // Check button - small 18pt circle on right
+            Button(action: startComplete) {
+                Circle()
+                    .fill(Color.white.opacity(isCheckHovered ? 0.9 : 0.45))
+                    .frame(width: 18, height: 18)
+                    .overlay(
+                        Image(systemName: "checkmark")
+                            .font(.system(size: 9, weight: .semibold))
+                            .foregroundColor(isCheckHovered ? stickyColor.accentColor : stickyColor.accentColor.opacity(0.6))
+                    )
+            }
+            .buttonStyle(.plain)
+            .onHover { hovering in
+                isCheckHovered = hovering
+            }
         }
         .padding(.horizontal, 12)
-        .padding(.vertical, 10)
-        .frame(width: 260, height: 80)
-        .background(stickyColor.backgroundColor)
+        .padding(.vertical, 8)
+        .frame(width: 260, height: 72)
+        .background(stickyColor.backgroundColor.opacity(0.92))
         .clipShape(RoundedRectangle(cornerRadius: 12))
-        .shadow(color: .black.opacity(0.22), radius: 10, x: 0, y: 5)
+        .shadow(color: .black.opacity(0.15), radius: 12, x: 0, y: 6)
         .opacity(opacity)
         .contextMenu {
             ForEach(StickyColor.allCases, id: \.rawValue) { color in
@@ -176,7 +179,7 @@ class StickyNoteWindowController {
         self.memoStore = memoStore
 
         let win = NSWindow(
-            contentRect: NSRect(x: memo.positionX, y: memo.positionY, width: 260, height: 80),
+            contentRect: NSRect(x: memo.positionX, y: memo.positionY, width: 260, height: 72),
             styleMask: .borderless,
             backing: .buffered,
             defer: false

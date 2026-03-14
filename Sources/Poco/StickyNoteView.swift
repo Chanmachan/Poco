@@ -86,6 +86,44 @@ class StickyHostingView<Content: View>: NSHostingView<Content> {
     // rightMouseDown はオーバーライドしない → SwiftUI .contextMenu が正常動作
 }
 
+// MARK: - NativeTextField (NSViewRepresentable)
+
+struct NativeTextField: NSViewRepresentable {
+    @Binding var text: String
+    var onCommit: () -> Void
+
+    func makeNSView(context: Context) -> NSTextField {
+        let tf = NSTextField()
+        tf.isBordered = false
+        tf.backgroundColor = .clear
+        tf.focusRingType = .none
+        tf.font = .systemFont(ofSize: 12.5)
+        tf.delegate = context.coordinator
+        return tf
+    }
+
+    func updateNSView(_ nsView: NSTextField, context: Context) {
+        if nsView.stringValue != text { nsView.stringValue = text }
+    }
+
+    func makeCoordinator() -> Coordinator { Coordinator(self) }
+
+    class Coordinator: NSObject, NSTextFieldDelegate {
+        var parent: NativeTextField
+        init(_ parent: NativeTextField) { self.parent = parent }
+
+        func controlTextDidChange(_ obj: Notification) {
+            if let tf = obj.object as? NSTextField { parent.text = tf.stringValue }
+        }
+
+        func control(_ control: NSControl, textView: NSTextView, doCommandBy selector: Selector) -> Bool {
+            if selector == #selector(NSResponder.insertNewline(_:)) { parent.onCommit(); return true }
+            if selector == #selector(NSResponder.cancelOperation(_:)) { parent.onCommit(); return true }
+            return false
+        }
+    }
+}
+
 // MARK: - StickyNoteView
 
 struct StickyNoteView: View {
@@ -97,7 +135,6 @@ struct StickyNoteView: View {
     @State private var isEditing = false
     @State private var editText = ""
     @State private var isCheckHovered = false
-    @FocusState private var editorFocused: Bool
 
     var onComplete: (() -> Void)?
 
@@ -106,48 +143,37 @@ struct StickyNoteView: View {
     var body: some View {
         HStack(alignment: .center, spacing: 8) {
             // テキスト表示 / 編集
-            Group {
-                if isEditing {
-                    TextField("メモを入力...", text: $editText)
-                        .textFieldStyle(.plain)
-                        .font(.system(size: 12.5, weight: .regular, design: .rounded))
-                        .frame(maxWidth: .infinity, minHeight: 20, maxHeight: 20)
-                        .focused($editorFocused)
-                        .onSubmit { saveEdit() }
-                        .onChange(of: editorFocused) { focused in
-                            if !focused { saveEdit() }
-                        }
-                } else {
-                    Text(memo.content.isEmpty ? "ダブルクリックで編集..." : memo.content)
-                        .font(.system(size: 12.5, weight: .regular, design: .rounded))
-                        .foregroundColor(
-                            memo.content.isEmpty
-                                ? .secondary
-                                : .black.opacity(0.82)
-                        )
-                        .frame(maxWidth: .infinity, minHeight: 20, maxHeight: 20)
-                        .lineLimit(1)
-                        .contentShape(Rectangle())
-                        .allowsHitTesting(true)
-                        .onTapGesture(count: 2) {
-                            editText = memo.content
-                            isEditing = true
-                            editorFocused = true
-                        }
-                }
+            if isEditing {
+                NativeTextField(text: $editText, onCommit: { saveEdit() })
+                    .frame(maxWidth: .infinity, minHeight: 20, maxHeight: 20)
+            } else {
+                Text(memo.content.isEmpty ? "ダブルクリックで編集..." : memo.content)
+                    .font(.system(size: 12.5, weight: .regular, design: .rounded))
+                    .foregroundColor(
+                        memo.content.isEmpty
+                            ? .secondary
+                            : .primary.opacity(0.82)
+                    )
+                    .frame(maxWidth: .infinity, minHeight: 20, maxHeight: 20)
+                    .lineLimit(1)
+                    .contentShape(Rectangle())
+                    .allowsHitTesting(true)
+                    .onTapGesture(count: 2) {
+                        editText = memo.content
+                        isEditing = true
+                    }
             }
 
-            // 完了ボタン（右端・丸）
+            // 完了ボタン（Liquid Glass 風）
             Button(action: startComplete) {
                 Circle()
-                    .fill(Color.white.opacity(isCheckHovered ? 0.85 : 0.4))
-                    .frame(width: 18, height: 18)
+                    .fill(.ultraThinMaterial)
+                    .overlay(Circle().strokeBorder(Color.white.opacity(0.4), lineWidth: 0.8))
+                    .frame(width: 20, height: 20)
                     .overlay(
                         Image(systemName: "checkmark")
-                            .font(.system(size: 9, weight: .bold))
-                            .foregroundColor(
-                                stickyColor.accentColor.opacity(isCheckHovered ? 1.0 : 0.7)
-                            )
+                            .font(.system(size: 9, weight: .semibold))
+                            .foregroundStyle(.primary)
                     )
             }
             .buttonStyle(.plain)
@@ -156,9 +182,14 @@ struct StickyNoteView: View {
         .padding(.horizontal, 12)
         .padding(.vertical, 8)
         .frame(width: 260, height: 72)
-        .background(stickyColor.backgroundColor.opacity(0.93))
-        .clipShape(RoundedRectangle(cornerRadius: 12))
-        .shadow(color: .black.opacity(0.18), radius: 10, x: 0, y: 5)
+        .background(.ultraThinMaterial)
+        .background(stickyColor.backgroundColor.opacity(0.35))
+        .overlay(
+            RoundedRectangle(cornerRadius: 14)
+                .strokeBorder(Color.white.opacity(0.25), lineWidth: 0.8)
+        )
+        .clipShape(RoundedRectangle(cornerRadius: 14))
+        .shadow(color: .black.opacity(0.12), radius: 16, x: 0, y: 8)
         .opacity(opacity)
         .contextMenu {
             Menu("色を変更") {

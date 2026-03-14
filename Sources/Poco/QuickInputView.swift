@@ -12,7 +12,7 @@ struct QuickInputView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            TextField("ここにメモを入力...", text: $text)
+            TextField("メモを入力...", text: $text)
                 .textFieldStyle(.plain)
                 .font(.system(size: 15, weight: .regular, design: .rounded))
                 .focused($isFocused)
@@ -21,22 +21,28 @@ struct QuickInputView: View {
                     if !trimmed.isEmpty { onSave(trimmed) }
                 }
 
-            Divider()
+            Divider().opacity(0.3)
 
-            HStack {
-                Text("⏎  保存")
+            HStack(spacing: 12) {
+                Text("⏎ 保存")
                     .font(.system(size: 10, weight: .medium, design: .monospaced))
-                    .foregroundColor(.secondary)
+                    .foregroundStyle(.tertiary)
                 Spacer()
-                Text("esc  キャンセル")
+                Text("esc キャンセル")
                     .font(.system(size: 10, weight: .medium, design: .monospaced))
-                    .foregroundColor(.secondary)
+                    .foregroundStyle(.tertiary)
             }
         }
-        .padding(16)
-        .frame(width: 320)
-        .background(.regularMaterial)
-        .clipShape(RoundedRectangle(cornerRadius: 14))
+        .padding(.horizontal, 18)
+        .padding(.vertical, 14)
+        .frame(width: 340)
+        .background(.ultraThinMaterial)
+        .overlay(
+            RoundedRectangle(cornerRadius: 16)
+                .strokeBorder(Color.white.opacity(0.2), lineWidth: 0.8)
+        )
+        .clipShape(RoundedRectangle(cornerRadius: 16))
+        .shadow(color: .black.opacity(0.25), radius: 24, x: 0, y: 12)
         .onAppear { isFocused = true }
     }
 }
@@ -58,7 +64,7 @@ class QuickInputWindowController {
         if window != nil { return }
 
         let panel = KeyablePanel(
-            contentRect: NSRect(x: 0, y: 0, width: 320, height: 90),
+            contentRect: NSRect(x: 0, y: 0, width: 340, height: 90),
             styleMask: [.borderless, .fullSizeContentView],
             backing: .buffered,
             defer: false
@@ -86,7 +92,7 @@ class QuickInputWindowController {
         // fittingSize でパネルサイズを合わせる
         let fittingSize = hostingView.fittingSize
         panel.setContentSize(NSSize(
-            width: max(320, fittingSize.width),
+            width: max(340, fittingSize.width),
             height: fittingSize.height
         ))
 

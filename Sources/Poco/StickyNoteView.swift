@@ -53,22 +53,31 @@ enum StickyColor: String, CaseIterable {
     }
 }
 
-// MARK: - WindowDragger (ドラッグ専用NSView)
+// MARK: - StickyHostingView (ドラッグ対応NSHostingView)
 
-/// borderless window をドラッグ移動するための透明レイヤー
-class DragHandleView: NSView {
+/// borderless window をドラッグ移動しつつ SwiftUI イベント（ダブルクリック・右クリック）を妨げない
+class StickyHostingView<Content: View>: NSHostingView<Content> {
+    private var storedMouseDownEvent: NSEvent?
+
     override func mouseDown(with event: NSEvent) {
-        window?.performDrag(with: event)
+        storedMouseDownEvent = event
+        super.mouseDown(with: event)   // SwiftUI に先に処理させる
     }
-    override func rightMouseDown(with event: NSEvent) {
-        // 右クリックは上位に流す（SwiftUI の contextMenu に届く）
-        super.rightMouseDown(with: event)
-    }
-}
 
-struct DragHandle: NSViewRepresentable {
-    func makeNSView(context: Context) -> DragHandleView { DragHandleView() }
-    func updateNSView(_ nsView: DragHandleView, context: Context) {}
+    override func mouseDragged(with event: NSEvent) {
+        if let initialEvent = storedMouseDownEvent {
+            storedMouseDownEvent = nil
+            window?.performDrag(with: initialEvent)  // ドラッグ開始
+        } else {
+            super.mouseDragged(with: event)
+        }
+    }
+
+    override func mouseUp(with event: NSEvent) {
+        storedMouseDownEvent = nil
+        super.mouseUp(with: event)
+    }
+    // rightMouseDown はオーバーライドしない → SwiftUI .contextMenu が正常動作
 }
 
 // MARK: - StickyNoteView
@@ -89,66 +98,55 @@ struct StickyNoteView: View {
     private var stickyColor: StickyColor { StickyColor.from(memo.color) }
 
     var body: some View {
-        ZStack {
-            // ── ドラッグハンドル（最背面・全面）──
-            DragHandle()
-
-            // ── コンテンツ ──
-            HStack(alignment: .center, spacing: 8) {
-
-                // テキスト表示 / 編集
-                Group {
-                    if isEditing {
-                        TextEditor(text: $editText)
-                            .font(.system(size: 12.5, weight: .regular, design: .rounded))
-                            .scrollContentBackground(.hidden)
-                            .background(.clear)
-                            .focused($editorFocused)
-                            .onChange(of: editorFocused) { focused in
-                                if !focused { saveEdit() }
-                            }
-                            // TextEditor のクリックがドラッグハンドルに届かないよう前面に
-                            .zIndex(1)
-                    } else {
-                        Text(memo.content.isEmpty ? "ダブルクリックで編集..." : memo.content)
-                            .font(.system(size: 12.5, weight: .regular, design: .rounded))
-                            .foregroundColor(
-                                memo.content.isEmpty
-                                    ? .secondary
-                                    : .black.opacity(0.82)
-                            )
-                            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
-                            .lineLimit(2)
-                            .contentShape(Rectangle())
-                            .onTapGesture(count: 2) {
-                                editText = memo.content
-                                isEditing = true
-                                editorFocused = true
-                            }
-                            .zIndex(1)
-                    }
-                }
-
-                // 完了ボタン（右端・丸）
-                Button(action: startComplete) {
-                    Circle()
-                        .fill(Color.white.opacity(isCheckHovered ? 0.85 : 0.4))
-                        .frame(width: 18, height: 18)
-                        .overlay(
-                            Image(systemName: "checkmark")
-                                .font(.system(size: 9, weight: .bold))
-                                .foregroundColor(
-                                    stickyColor.accentColor.opacity(isCheckHovered ? 1.0 : 0.7)
-                                )
+        HStack(alignment: .center, spacing: 8) {
+            // テキスト表示 / 編集
+            Group {
+                if isEditing {
+                    TextEditor(text: $editText)
+                        .font(.system(size: 12.5, weight: .regular, design: .rounded))
+                        .scrollContentBackground(.hidden)
+                        .background(.clear)
+                        .focused($editorFocused)
+                        .onChange(of: editorFocused) { focused in
+                            if !focused { saveEdit() }
+                        }
+                } else {
+                    Text(memo.content.isEmpty ? "ダブルクリックで編集..." : memo.content)
+                        .font(.system(size: 12.5, weight: .regular, design: .rounded))
+                        .foregroundColor(
+                            memo.content.isEmpty
+                                ? .secondary
+                                : .black.opacity(0.82)
                         )
+                        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
+                        .lineLimit(2)
+                        .contentShape(Rectangle())
+                        .onTapGesture(count: 2) {
+                            editText = memo.content
+                            isEditing = true
+                            editorFocused = true
+                        }
                 }
-                .buttonStyle(.plain)
-                .onHover { isCheckHovered = $0 }
-                .zIndex(2)
             }
-            .padding(.horizontal, 12)
-            .padding(.vertical, 8)
+
+            // 完了ボタン（右端・丸）
+            Button(action: startComplete) {
+                Circle()
+                    .fill(Color.white.opacity(isCheckHovered ? 0.85 : 0.4))
+                    .frame(width: 18, height: 18)
+                    .overlay(
+                        Image(systemName: "checkmark")
+                            .font(.system(size: 9, weight: .bold))
+                            .foregroundColor(
+                                stickyColor.accentColor.opacity(isCheckHovered ? 1.0 : 0.7)
+                            )
+                    )
+            }
+            .buttonStyle(.plain)
+            .onHover { isCheckHovered = $0 }
         }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 8)
         .frame(width: 260, height: 72)
         .background(stickyColor.backgroundColor.opacity(0.93))
         .clipShape(RoundedRectangle(cornerRadius: 12))
@@ -214,7 +212,7 @@ class StickyNoteWindowController {
         win.backgroundColor = .clear
         win.isOpaque = false
         win.hasShadow = false
-        // ドラッグは DragHandle が担うため false に
+        // ドラッグは StickyHostingView が担うため false に
         win.isMovableByWindowBackground = false
         win.collectionBehavior = [.canJoinAllSpaces, .stationary]
         win.ignoresMouseEvents = false
@@ -223,7 +221,7 @@ class StickyNoteWindowController {
         let view = StickyNoteView(memo: memo, memoStore: memoStore, onComplete: { [weak win] in
             win?.orderOut(nil)
         })
-        win.contentView = NSHostingView(rootView: view)
+        win.contentView = StickyHostingView(rootView: view)
         self.window = win
 
         moveObserver = NotificationCenter.default.addObserver(

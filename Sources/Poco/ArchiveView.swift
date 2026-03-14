@@ -52,11 +52,11 @@ struct ArchiveView: View {
                             }) {
                                 Text("完了")
                                     .font(.system(size: 11, weight: .medium))
-                                    .foregroundColor(.white)
+                                    .foregroundColor(.green)
                                     .padding(.horizontal, 12)
                                     .padding(.vertical, 5)
-                                    .background(Color(hex: "#34C759"))
-                                    .clipShape(Capsule())
+                                    .background(Capsule().fill(.thinMaterial))
+                                    .overlay(Capsule().strokeBorder(Color.green.opacity(0.3), lineWidth: 0.5))
                             }
                             .buttonStyle(.plain)
 
@@ -66,15 +66,22 @@ struct ArchiveView: View {
                                 Image(systemName: "trash")
                                     .font(.system(size: 12))
                                     .foregroundColor(.red.opacity(0.7))
+                                    .padding(6)
+                                    .background(Capsule().fill(.thinMaterial))
+                                    .overlay(Capsule().strokeBorder(Color.red.opacity(0.2), lineWidth: 0.5))
                             }
                             .buttonStyle(.plain)
                         }
                         .padding(.horizontal, 14)
                         .padding(.vertical, 10)
                         .background(
-                            RoundedRectangle(cornerRadius: 10)
-                                .fill(Color(nsColor: .controlBackgroundColor))
-                                .shadow(color: .black.opacity(0.06), radius: 4, x: 0, y: 2)
+                            RoundedRectangle(cornerRadius: 12)
+                                .fill(.ultraThinMaterial)
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 12)
+                                        .strokeBorder(Color.primary.opacity(0.08), lineWidth: 0.5)
+                                )
+                                .shadow(color: .black.opacity(0.06), radius: 8, x: 0, y: 3)
                         )
                     }
                 }
@@ -110,11 +117,11 @@ struct ArchiveView: View {
                             }) {
                                 Text("未完了に戻す")
                                     .font(.system(size: 11, weight: .medium))
-                                    .foregroundColor(.white)
+                                    .foregroundColor(.blue)
                                     .padding(.horizontal, 12)
                                     .padding(.vertical, 5)
-                                    .background(Color(hex: "#007AFF"))
-                                    .clipShape(Capsule())
+                                    .background(Capsule().fill(.thinMaterial))
+                                    .overlay(Capsule().strokeBorder(Color.blue.opacity(0.3), lineWidth: 0.5))
                             }
                             .buttonStyle(.plain)
 
@@ -124,15 +131,22 @@ struct ArchiveView: View {
                                 Image(systemName: "trash")
                                     .font(.system(size: 12))
                                     .foregroundColor(.red.opacity(0.7))
+                                    .padding(6)
+                                    .background(Capsule().fill(.thinMaterial))
+                                    .overlay(Capsule().strokeBorder(Color.red.opacity(0.2), lineWidth: 0.5))
                             }
                             .buttonStyle(.plain)
                         }
                         .padding(.horizontal, 14)
                         .padding(.vertical, 10)
                         .background(
-                            RoundedRectangle(cornerRadius: 10)
-                                .fill(Color(nsColor: .controlBackgroundColor))
-                                .shadow(color: .black.opacity(0.06), radius: 4, x: 0, y: 2)
+                            RoundedRectangle(cornerRadius: 12)
+                                .fill(.ultraThinMaterial)
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 12)
+                                        .strokeBorder(Color.primary.opacity(0.08), lineWidth: 0.5)
+                                )
+                                .shadow(color: .black.opacity(0.06), radius: 8, x: 0, y: 3)
                         )
                     }
                 }

@@ -106,6 +106,7 @@ struct StickyNoteView: View {
                         .font(.system(size: 12.5, weight: .regular, design: .rounded))
                         .scrollContentBackground(.hidden)
                         .background(.clear)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
                         .focused($editorFocused)
                         .onChange(of: editorFocused) { focused in
                             if !focused { saveEdit() }

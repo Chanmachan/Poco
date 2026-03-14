@@ -70,9 +70,9 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     // MARK: - Quick Input
 
     private func showQuickInput() {
-        quickInputController?.show { [weak self] text in
+        quickInputController?.show { [weak self] text, color in
             guard let self else { return }
-            self.memoStore.createMemo(content: text)
+            self.memoStore.createMemo(content: text, color: color)
         }
     }
 

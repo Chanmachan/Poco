@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<model type="com.apple.IDECoreDataModeler.DataModel" documentVersion="1.0" lastSavedToolsVersion="22222" systemVersion="23A344" minimumToolsVersion="Automatic" sourceLanguage="Swift" userDefinedModelVersionIdentifier="">
+    <entity name="MemoEntity" representedClassName="MemoEntity" syncable="YES" codeGenerationType="class">
+        <attribute name="color" attributeType="String" defaultValueString="#FFF9C4"/>
+        <attribute name="completedAt" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="content" attributeType="String" defaultValueString=""/>
+        <attribute name="createdAt" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="id" attributeType="UUID" usesScalarValueType="NO"/>
+        <attribute name="positionX" attributeType="Double" defaultValueString="100" usesScalarValueType="YES"/>
+        <attribute name="positionY" attributeType="Double" defaultValueString="100" usesScalarValueType="YES"/>
+        <attribute name="status" attributeType="String" defaultValueString="active"/>
+    </entity>
+</model>

@@ -96,7 +96,9 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
         // Add windows for new active memos
         for memo in memos where !currentIDs.contains(memo.objectID) {
-            let controller = StickyNoteWindowController(memo: memo, memoStore: memoStore)
+            let controller = StickyNoteWindowController(memo: memo, memoStore: memoStore, onTap: { [weak self] in
+                self?.openArchive()
+            })
             stickyNoteControllers[memo.objectID] = controller
         }
     }

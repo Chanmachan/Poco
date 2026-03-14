@@ -5,7 +5,7 @@ import AppKit
 
 struct ArchiveView: View {
     @ObservedObject var memoStore: MemoStore
-    @State private var selectedTab = 0
+    @Binding var selectedTab: Int
 
     var body: some View {
         VStack(spacing: 0) {
@@ -183,9 +183,17 @@ struct ArchiveView: View {
 
 class ArchiveWindowController: NSWindowController {
     private let memoStore: MemoStore
+    private let selectedTab: Binding<Int>
+    private var _selectedTab: Int = 0
 
     init(memoStore: MemoStore) {
         self.memoStore = memoStore
+
+        var storage = 0
+        self.selectedTab = Binding(
+            get: { storage },
+            set: { storage = $0 }
+        )
 
         let window = NSWindow(
             contentRect: NSRect(x: 0, y: 0, width: 480, height: 520),
@@ -195,14 +203,27 @@ class ArchiveWindowController: NSWindowController {
         )
         window.title = "Poco - メモ一覧"
         window.center()
-        window.contentView = NSHostingView(rootView: ArchiveView(memoStore: memoStore))
 
         super.init(window: window)
+
+        // Use a class-level binding that captures self
+        let binding = Binding<Int>(
+            get: { [weak self] in self?._selectedTab ?? 0 },
+            set: { [weak self] in self?._selectedTab = $0 }
+        )
+        window.contentView = NSHostingView(rootView: ArchiveView(memoStore: memoStore, selectedTab: binding))
     }
 
     required init?(coder: NSCoder) { fatalError() }
 
-    func show() {
+    func show(tab: Int = 0) {
+        _selectedTab = tab
+        // Recreate content view to pick up new tab
+        let binding = Binding<Int>(
+            get: { [weak self] in self?._selectedTab ?? 0 },
+            set: { [weak self] in self?._selectedTab = $0 }
+        )
+        window?.contentView = NSHostingView(rootView: ArchiveView(memoStore: memoStore, selectedTab: binding))
         window?.makeKeyAndOrderFront(nil)
         NSApp.activate(ignoringOtherApps: true)
     }

@@ -219,17 +219,10 @@ struct ArchiveView: View {
 
 class ArchiveWindowController: NSWindowController {
     private let memoStore: MemoStore
-    private let selectedTab: Binding<Int>
     private var _selectedTab: Int = 0
 
     init(memoStore: MemoStore) {
         self.memoStore = memoStore
-
-        var storage = 0
-        self.selectedTab = Binding(
-            get: { storage },
-            set: { storage = $0 }
-        )
 
         let window = NSWindow(
             contentRect: NSRect(x: 0, y: 0, width: 480, height: 520),

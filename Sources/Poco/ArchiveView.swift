@@ -287,9 +287,29 @@ struct ArchiveView: View {
         if memoStore.archivedMemos.isEmpty {
             emptyStateView(icon: "checkmark.circle", message: "完了済みメモはありません")
         } else {
-            ScrollView {
-                LazyVStack(spacing: 8) {
-                    ForEach(memoStore.archivedMemos, id: \.objectID) { memo in
+            VStack(spacing: 0) {
+                // 全件削除ボタン
+                HStack {
+                    Spacer()
+                    Button(action: {
+                        memoStore.archivedMemos.forEach { memoStore.deleteMemo($0) }
+                    }) {
+                        Label("完了済みを全て削除", systemImage: "trash")
+                            .font(.system(size: 11, weight: .medium))
+                            .foregroundColor(.red)
+                            .padding(.horizontal, 14)
+                            .padding(.vertical, 6)
+                            .background(Capsule().fill(.thinMaterial))
+                            .overlay(Capsule().strokeBorder(Color.red.opacity(0.4), lineWidth: 0.8))
+                    }
+                    .buttonStyle(.plain)
+                }
+                .padding(.horizontal, 16)
+                .padding(.top, 10)
+
+                ScrollView {
+                    LazyVStack(spacing: 8) {
+                        ForEach(memoStore.archivedMemos, id: \.objectID) { memo in
                         HStack(spacing: 12) {
                             VStack(alignment: .leading, spacing: 3) {
                                 Text(memo.content)
@@ -343,6 +363,7 @@ struct ArchiveView: View {
                 }
                 .padding(.horizontal, 16)
                 .padding(.vertical, 12)
+                }
             }
         }
     }

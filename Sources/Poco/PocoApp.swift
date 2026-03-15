@@ -25,6 +25,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     private var quickInputController: QuickInputWindowController?
     private var archiveWindowController: ArchiveWindowController?
     private var widgetController: StickyWidgetWindowController?
+    private var settingsWindowController: SettingsWindowController?
 
     // Tracks open sticky note windows by Core Data object ID
     private var stickyNoteControllers: [NSManagedObjectID: StickyNoteWindowController] = [:]
@@ -53,7 +54,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             openArchiveHandler: { [weak self] in self?.openArchive() },
             showQuickInputHandler: { [weak self] in self?.showQuickInput() },
             colorFilterHandler: { [weak self] hex in self?.applyColorFilter(hex) },
-            toggleWidgetHandler: { [weak self] in self?.toggleWidget() }
+            toggleWidgetHandler: { [weak self] in self?.toggleWidget() },
+            settingsHandler: { [weak self] in self?.openSettings() }
         )
 
         // Global shortcut (⌃⌥N)
@@ -89,6 +91,15 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
     private func openArchive() {
         archiveWindowController?.show()
+    }
+
+    // MARK: - Settings
+
+    private func openSettings() {
+        if settingsWindowController == nil {
+            settingsWindowController = SettingsWindowController()
+        }
+        settingsWindowController?.show()
     }
 
     // MARK: - Widget

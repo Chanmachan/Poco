@@ -8,19 +8,22 @@ class StatusBarController {
     private let showQuickInputHandler: () -> Void
     private let colorFilterHandler: (String?) -> Void
     private let toggleWidgetHandler: () -> Void
+    private let settingsHandler: () -> Void
 
     init(
         memoStore: MemoStore,
         openArchiveHandler: @escaping () -> Void,
         showQuickInputHandler: @escaping () -> Void,
         colorFilterHandler: @escaping (String?) -> Void,
-        toggleWidgetHandler: @escaping () -> Void
+        toggleWidgetHandler: @escaping () -> Void,
+        settingsHandler: @escaping () -> Void
     ) {
         self.memoStore = memoStore
         self.openArchiveHandler = openArchiveHandler
         self.showQuickInputHandler = showQuickInputHandler
         self.colorFilterHandler = colorFilterHandler
         self.toggleWidgetHandler = toggleWidgetHandler
+        self.settingsHandler = settingsHandler
 
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
         configureButton()
@@ -92,6 +95,14 @@ class StatusBarController {
 
         menu.addItem(.separator())
 
+        let settingsItem = NSMenuItem(
+            title: "設定...",
+            action: #selector(handleSettings),
+            keyEquivalent: ","
+        )
+        settingsItem.target = self
+        menu.addItem(settingsItem)
+
         let archiveItem = NSMenuItem(
             title: "アーカイブを開く",
             action: #selector(handleOpenArchive),
@@ -120,6 +131,10 @@ class StatusBarController {
 
     @objc private func handleOpenArchive() {
         openArchiveHandler()
+    }
+
+    @objc private func handleSettings() {
+        settingsHandler()
     }
 
     @objc private func handleToggleWidget() {

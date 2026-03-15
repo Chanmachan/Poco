@@ -135,11 +135,32 @@ class MemoStore: ObservableObject {
     // MARK: - Helpers
 
     private func defaultPosition() -> (x: Double, y: Double) {
-        let offset = Double(activeMemos.count) * 30
         guard let screen = NSScreen.main else {
-            return (100 + offset, 100 + offset)
+            return (100, 100)
         }
-        let screenHeight = screen.frame.height
-        return (100 + offset, screenHeight - 200 - 80 - offset)
+        let noteW: Double = 260
+        let noteH: Double = 72
+        let margin: Double = 16
+
+        // 画面右上から下に向けて配置
+        let startX = screen.visibleFrame.maxX - noteW - margin
+        let startY = screen.visibleFrame.maxY - noteH - margin
+
+        // 既存の active メモの位置を収集
+        let occupiedRects = activeMemos.map {
+            CGRect(x: $0.positionX, y: $0.positionY, width: noteW, height: noteH)
+        }
+
+        // 重ならない位置を探す（右端から下に向かって）
+        var y = startY
+        while y > screen.visibleFrame.minY {
+            let candidate = CGRect(x: startX, y: y, width: noteW, height: noteH)
+            if !occupiedRects.contains(where: { $0.intersects(candidate) }) {
+                return (startX, y)
+            }
+            y -= noteH + margin
+        }
+        // 全部埋まっていたらオフセット付きでランダム配置
+        return (startX - Double.random(in: 0...100), startY - Double.random(in: 0...200))
     }
 }

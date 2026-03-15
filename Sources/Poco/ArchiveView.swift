@@ -231,27 +231,51 @@ struct ArchiveView: View {
                 }
             }
 
-            // Bulk delete bar
+            // Bulk action bar
             if isSelectMode && !selectedIDs.isEmpty {
-                Divider()
-                HStack {
-                    Spacer()
-                    Button("選択した\(selectedIDs.count)件を削除") {
+                HStack(spacing: 12) {
+                    // 一括完了ボタン
+                    Button(action: {
                         for id in selectedIDs {
-                            if let memo = memoStore.activeMemos.first(where: { $0.objectID == id }) {
+                            if let memo = filteredMemos.first(where: { $0.objectID == id }) {
+                                memoStore.completeMemoFromArchive(memo)
+                            }
+                        }
+                        selectedIDs.removeAll()
+                        isSelectMode = false
+                    }) {
+                        Label("完了 (\(selectedIDs.count)件)", systemImage: "checkmark.circle")
+                            .font(.system(size: 12, weight: .medium))
+                            .foregroundColor(.green)
+                            .padding(.horizontal, 16)
+                            .padding(.vertical, 8)
+                            .background(Capsule().fill(.thinMaterial))
+                            .overlay(Capsule().strokeBorder(Color.green.opacity(0.4), lineWidth: 0.8))
+                    }
+                    .buttonStyle(.plain)
+
+                    // 一括削除ボタン
+                    Button(action: {
+                        for id in selectedIDs {
+                            if let memo = filteredMemos.first(where: { $0.objectID == id }) {
                                 memoStore.deleteMemo(memo)
                             }
                         }
                         selectedIDs.removeAll()
                         isSelectMode = false
+                    }) {
+                        Label("削除 (\(selectedIDs.count)件)", systemImage: "trash")
+                            .font(.system(size: 12, weight: .medium))
+                            .foregroundColor(.red)
+                            .padding(.horizontal, 16)
+                            .padding(.vertical, 8)
+                            .background(Capsule().fill(.thinMaterial))
+                            .overlay(Capsule().strokeBorder(Color.red.opacity(0.4), lineWidth: 0.8))
                     }
                     .buttonStyle(.plain)
-                    .font(.system(size: 13, weight: .medium))
-                    .foregroundColor(.red)
-                    .padding(.vertical, 10)
-                    Spacer()
                 }
-                .background(.regularMaterial)
+                .padding(.horizontal, 16)
+                .padding(.vertical, 10)
             }
         }
     }

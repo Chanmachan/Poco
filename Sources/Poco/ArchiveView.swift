@@ -2,11 +2,17 @@ import SwiftUI
 import AppKit
 import CoreData
 
+// MARK: - Notification Name
+
+extension Notification.Name {
+    static let archiveOpenTab = Notification.Name("archiveOpenTab")
+}
+
 // MARK: - ArchiveView
 
 struct ArchiveView: View {
     @ObservedObject var memoStore: MemoStore
-    @Binding var selectedTab: Int
+    @State private var selectedTab: Int = 0
 
     @State private var editingMemoID: NSManagedObjectID? = nil
     @State private var editText: String = ""
@@ -31,6 +37,11 @@ struct ArchiveView: View {
         }
         .frame(width: 480, height: 520)
         .background(Color(nsColor: .windowBackgroundColor))
+        .onReceive(NotificationCenter.default.publisher(for: .archiveOpenTab)) { notification in
+            if let tab = notification.object as? Int {
+                selectedTab = tab
+            }
+        }
     }
 
     @ViewBuilder
@@ -219,7 +230,6 @@ struct ArchiveView: View {
 
 class ArchiveWindowController: NSWindowController {
     private let memoStore: MemoStore
-    private var _selectedTab: Int = 0
 
     init(memoStore: MemoStore) {
         self.memoStore = memoStore
@@ -235,25 +245,18 @@ class ArchiveWindowController: NSWindowController {
 
         super.init(window: window)
 
-        // Use a class-level binding that captures self
-        let binding = Binding<Int>(
-            get: { [weak self] in self?._selectedTab ?? 0 },
-            set: { [weak self] in self?._selectedTab = $0 }
-        )
-        window.contentView = NSHostingView(rootView: ArchiveView(memoStore: memoStore, selectedTab: binding))
+        window.contentView = NSHostingView(rootView: ArchiveView(memoStore: memoStore))
     }
 
     required init?(coder: NSCoder) { fatalError() }
 
-    func show(tab: Int = 0) {
-        _selectedTab = tab
-        // Recreate content view to pick up new tab
-        let binding = Binding<Int>(
-            get: { [weak self] in self?._selectedTab ?? 0 },
-            set: { [weak self] in self?._selectedTab = $0 }
-        )
-        window?.contentView = NSHostingView(rootView: ArchiveView(memoStore: memoStore, selectedTab: binding))
+    func openToTab(_ tab: Int) {
+        NotificationCenter.default.post(name: .archiveOpenTab, object: tab)
         window?.makeKeyAndOrderFront(nil)
         NSApp.activate(ignoringOtherApps: true)
+    }
+
+    func show(tab: Int = 0) {
+        openToTab(tab)
     }
 }

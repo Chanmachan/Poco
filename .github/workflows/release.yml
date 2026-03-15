@@ -26,11 +26,15 @@ jobs:
           mkdir -p "Poco.app/Contents/Resources"
           cp .build/release/Poco "$APP_DIR/Poco"
           cp Info.plist "Poco.app/Contents/Info.plist"
+          # アイコンをコピー
+          cp Sources/Poco/Resources/AppIcon.icns "Poco.app/Contents/Resources/AppIcon.icns" 2>/dev/null || true
           # Core Data モデルをコピー
           cp -r Sources/Poco/Resources/ "Poco.app/Contents/Resources/" 2>/dev/null || true
+          # Quarantine 属性を削除（Gatekeeper 対策）
+          xattr -cr Poco.app || true
 
       - name: Zip .app
-        run: zip -r Poco.zip Poco.app
+        run: ditto -c -k --sequesterRsrc --keepParent Poco.app Poco.zip
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2

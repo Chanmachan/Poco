@@ -5,15 +5,18 @@ class StatusBarController {
     private let memoStore: MemoStore
     private let openArchiveHandler: () -> Void
     private let showQuickInputHandler: () -> Void
+    private let colorFilterHandler: (String?) -> Void
 
     init(
         memoStore: MemoStore,
         openArchiveHandler: @escaping () -> Void,
-        showQuickInputHandler: @escaping () -> Void
+        showQuickInputHandler: @escaping () -> Void,
+        colorFilterHandler: @escaping (String?) -> Void
     ) {
         self.memoStore = memoStore
         self.openArchiveHandler = openArchiveHandler
         self.showQuickInputHandler = showQuickInputHandler
+        self.colorFilterHandler = colorFilterHandler
 
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
         configureButton()
@@ -40,6 +43,29 @@ class StatusBarController {
         )
         newItem.target = self
         menu.addItem(newItem)
+
+        menu.addItem(.separator())
+
+        // Color filter: すべて表示
+        let allItem = NSMenuItem(
+            title: "すべて表示",
+            action: #selector(handleFilterAll),
+            keyEquivalent: ""
+        )
+        allItem.target = self
+        menu.addItem(allItem)
+
+        // Color filter items
+        for color in StickyColor.allCases {
+            let item = NSMenuItem(
+                title: color.displayName + "のみ",
+                action: #selector(handleFilterColor(_:)),
+                keyEquivalent: ""
+            )
+            item.target = self
+            item.representedObject = color.rawValue
+            menu.addItem(item)
+        }
 
         menu.addItem(.separator())
 
@@ -71,5 +97,14 @@ class StatusBarController {
 
     @objc private func handleOpenArchive() {
         openArchiveHandler()
+    }
+
+    @objc private func handleFilterAll() {
+        colorFilterHandler(nil)
+    }
+
+    @objc private func handleFilterColor(_ sender: NSMenuItem) {
+        guard let hex = sender.representedObject as? String else { return }
+        colorFilterHandler(hex)
     }
 }

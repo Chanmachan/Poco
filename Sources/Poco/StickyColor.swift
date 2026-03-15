@@ -18,11 +18,11 @@ extension Color {
 // MARK: - StickyColor
 
 enum StickyColor: String, CaseIterable {
-    case yellow = "#FFF9C4"
-    case blue   = "#E3F2FD"
-    case green  = "#E8F5E9"
-    case pink   = "#FCE4EC"
-    case white  = "#FAFAFA"
+    case yellow = "#FFF176"
+    case blue   = "#90CAF9"
+    case green  = "#A5D6A7"
+    case pink   = "#F48FB1"
+    case white  = "#F5F5F5"
 
     var displayName: String {
         switch self {

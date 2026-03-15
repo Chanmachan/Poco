@@ -65,6 +65,34 @@ struct QuickInputView: View {
     }
 }
 
+// MARK: - DraggableHostingView
+
+/// TextField などの SwiftUI コントロール外をドラッグしてウィンドウを移動できる NSHostingView
+class DraggableHostingView<Content: View>: NSHostingView<Content> {
+    private var dragStart: NSPoint?
+    private var windowOriginOnDrag: NSPoint?
+
+    override func mouseDown(with event: NSEvent) {
+        dragStart = event.locationInWindow
+        windowOriginOnDrag = window?.frame.origin
+        super.mouseDown(with: event)
+    }
+
+    override func mouseDragged(with event: NSEvent) {
+        guard let start = dragStart, let origin = windowOriginOnDrag,
+              let window = window else { return }
+        let dx = event.locationInWindow.x - start.x
+        let dy = event.locationInWindow.y - start.y
+        window.setFrameOrigin(NSPoint(x: origin.x + dx, y: origin.y + dy))
+    }
+
+    override func mouseUp(with event: NSEvent) {
+        dragStart = nil
+        windowOriginOnDrag = nil
+        super.mouseUp(with: event)
+    }
+}
+
 // MARK: - KeyablePanel
 // borderless NSPanel がキーウィンドウになれるようにサブクラス化
 private class KeyablePanel: NSPanel {
@@ -104,7 +132,7 @@ class QuickInputWindowController {
             }
         )
 
-        let hostingView = NSHostingView(rootView: view)
+        let hostingView = DraggableHostingView(rootView: view)
         hostingView.wantsLayer = true
         hostingView.layer?.cornerRadius = 16
         hostingView.layer?.masksToBounds = true

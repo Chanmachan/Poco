@@ -1,58 +1,6 @@
 import SwiftUI
 import AppKit
 
-// MARK: - Color Helpers
-
-extension Color {
-    init(hex: String) {
-        var sanitized = hex.trimmingCharacters(in: .whitespacesAndNewlines)
-        sanitized = sanitized.hasPrefix("#") ? String(sanitized.dropFirst()) : sanitized
-        var rgb: UInt64 = 0
-        Scanner(string: sanitized).scanHexInt64(&rgb)
-        let r = Double((rgb & 0xFF0000) >> 16) / 255.0
-        let g = Double((rgb & 0x00FF00) >> 8) / 255.0
-        let b = Double(rgb & 0x0000FF) / 255.0
-        self.init(red: r, green: g, blue: b)
-    }
-}
-
-// MARK: - StickyColor
-
-enum StickyColor: String, CaseIterable {
-    case yellow = "#FFF9C4"
-    case blue   = "#E3F2FD"
-    case green  = "#E8F5E9"
-    case pink   = "#FCE4EC"
-    case white  = "#FAFAFA"
-
-    var displayName: String {
-        switch self {
-        case .yellow: return "🟡 黄"
-        case .blue:   return "🔵 青"
-        case .green:  return "🟢 緑"
-        case .pink:   return "🩷 ピンク"
-        case .white:  return "⬜ 白"
-        }
-    }
-
-    var accentHex: String {
-        switch self {
-        case .yellow: return "#E6952A"
-        case .blue:   return "#1565C0"
-        case .green:  return "#2E7D32"
-        case .pink:   return "#C62828"
-        case .white:  return "#9E9E9E"
-        }
-    }
-
-    var backgroundColor: Color { Color(hex: rawValue) }
-    var accentColor: Color     { Color(hex: accentHex) }
-
-    static func from(_ hex: String) -> StickyColor {
-        StickyColor(rawValue: hex) ?? .yellow
-    }
-}
-
 // MARK: - StickyHostingView (ドラッグ対応NSHostingView)
 
 /// borderless window をドラッグ移動しつつ SwiftUI イベント（ダブルクリック・右クリック）を妨げない
@@ -86,44 +34,6 @@ class StickyHostingView<Content: View>: NSHostingView<Content> {
     // rightMouseDown はオーバーライドしない → SwiftUI .contextMenu が正常動作
 }
 
-// MARK: - NativeTextField (NSViewRepresentable)
-
-struct NativeTextField: NSViewRepresentable {
-    @Binding var text: String
-    var onCommit: () -> Void
-
-    func makeNSView(context: Context) -> NSTextField {
-        let tf = NSTextField()
-        tf.isBordered = false
-        tf.backgroundColor = .clear
-        tf.focusRingType = .none
-        tf.font = .systemFont(ofSize: 12.5)
-        tf.delegate = context.coordinator
-        return tf
-    }
-
-    func updateNSView(_ nsView: NSTextField, context: Context) {
-        if nsView.stringValue != text { nsView.stringValue = text }
-    }
-
-    func makeCoordinator() -> Coordinator { Coordinator(self) }
-
-    class Coordinator: NSObject, NSTextFieldDelegate {
-        var parent: NativeTextField
-        init(_ parent: NativeTextField) { self.parent = parent }
-
-        func controlTextDidChange(_ obj: Notification) {
-            if let tf = obj.object as? NSTextField { parent.text = tf.stringValue }
-        }
-
-        func control(_ control: NSControl, textView: NSTextView, doCommandBy selector: Selector) -> Bool {
-            if selector == #selector(NSResponder.insertNewline(_:)) { parent.onCommit(); return true }
-            if selector == #selector(NSResponder.cancelOperation(_:)) { parent.onCommit(); return true }
-            return false
-        }
-    }
-}
-
 // MARK: - StickyNoteView
 
 struct StickyNoteView: View {
@@ -132,37 +42,21 @@ struct StickyNoteView: View {
 
     @State private var opacity: Double = 1.0
     @State private var showDeleteConfirm = false
-    @State private var isEditing = false
-    @State private var editText = ""
-    @State private var isCheckHovered = false
 
+    var onTap: (() -> Void)?
     var onComplete: (() -> Void)?
 
     private var stickyColor: StickyColor { StickyColor.from(memo.color) }
 
     var body: some View {
         HStack(alignment: .center, spacing: 8) {
-            // テキスト表示 / 編集
-            if isEditing {
-                NativeTextField(text: $editText, onCommit: { saveEdit() })
-                    .frame(maxWidth: .infinity, minHeight: 20, maxHeight: 20)
-            } else {
-                Text(memo.content.isEmpty ? "ダブルクリックで編集..." : memo.content)
-                    .font(.system(size: 12.5, weight: .regular, design: .rounded))
-                    .foregroundColor(
-                        memo.content.isEmpty
-                            ? .secondary
-                            : .primary.opacity(0.82)
-                    )
-                    .frame(maxWidth: .infinity, minHeight: 20, maxHeight: 20)
-                    .lineLimit(1)
-                    .contentShape(Rectangle())
-                    .allowsHitTesting(true)
-                    .onTapGesture(count: 2) {
-                        editText = memo.content
-                        isEditing = true
-                    }
-            }
+            Text(memo.content)
+                .font(.system(size: 12.5, weight: .regular, design: .rounded))
+                .foregroundColor(.primary.opacity(0.82))
+                .frame(maxWidth: .infinity, minHeight: 20, maxHeight: 20)
+                .lineLimit(1)
+                .contentShape(Rectangle())
+                .onTapGesture { onTap?() }
 
             // 完了ボタン（Liquid Glass 風）
             Button(action: startComplete) {
@@ -177,7 +71,6 @@ struct StickyNoteView: View {
                     )
             }
             .buttonStyle(.plain)
-            .onHover { isCheckHovered = $0 }
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 8)
@@ -192,14 +85,6 @@ struct StickyNoteView: View {
         .shadow(color: .black.opacity(0.12), radius: 16, x: 0, y: 8)
         .opacity(opacity)
         .contextMenu {
-            Menu("色を変更") {
-                ForEach(StickyColor.allCases, id: \.rawValue) { color in
-                    Button(color.displayName) {
-                        memoStore.updateColor(memo, color: color.rawValue)
-                    }
-                }
-            }
-            Divider()
             Button("削除", role: .destructive) {
                 showDeleteConfirm = true
             }
@@ -208,14 +93,6 @@ struct StickyNoteView: View {
             Button("削除", role: .destructive) { memoStore.deleteMemo(memo) }
             Button("キャンセル", role: .cancel) {}
         }
-    }
-
-    private func saveEdit() {
-        let trimmed = editText.trimmingCharacters(in: .whitespacesAndNewlines)
-        if !trimmed.isEmpty {
-            memoStore.updateContent(memo, content: trimmed)
-        }
-        isEditing = false
     }
 
     private func startComplete() {
@@ -237,7 +114,7 @@ class StickyNoteWindowController {
 
     var memoObjectID: NSManagedObjectID { memo.objectID }
 
-    init(memo: MemoEntity, memoStore: MemoStore) {
+    init(memo: MemoEntity, memoStore: MemoStore, onTap: (() -> Void)? = nil) {
         self.memo = memo
         self.memoStore = memoStore
 
@@ -257,7 +134,7 @@ class StickyNoteWindowController {
         win.ignoresMouseEvents = false
         win.acceptsMouseMovedEvents = true
 
-        let view = StickyNoteView(memo: memo, memoStore: memoStore, onComplete: { [weak win] in
+        let view = StickyNoteView(memo: memo, memoStore: memoStore, onTap: onTap, onComplete: { [weak win] in
             win?.orderOut(nil)
         })
         win.contentView = StickyHostingView(rootView: view)

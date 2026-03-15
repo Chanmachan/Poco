@@ -5,21 +5,39 @@ import AppKit
 
 struct QuickInputView: View {
     @State private var text = ""
+    @State private var selectedColor: StickyColor = .yellow
     @FocusState private var isFocused: Bool
 
-    let onSave: (String) -> Void
+    let onSave: (String, String) -> Void
     let onCancel: () -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            TextField("メモを入力...", text: $text)
-                .textFieldStyle(.plain)
-                .font(.system(size: 15, weight: .regular, design: .rounded))
-                .focused($isFocused)
-                .onSubmit {
-                    let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
-                    if !trimmed.isEmpty { onSave(trimmed) }
+            HStack(spacing: 8) {
+                TextField("メモを入力...", text: $text)
+                    .textFieldStyle(.plain)
+                    .font(.system(size: 15, weight: .regular, design: .rounded))
+                    .focused($isFocused)
+                    .onSubmit {
+                        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+                        if !trimmed.isEmpty { onSave(trimmed, selectedColor.rawValue) }
+                    }
+
+                HStack(spacing: 4) {
+                    ForEach(StickyColor.allCases, id: \.rawValue) { color in
+                        Circle()
+                            .fill(Color(hex: color.rawValue))
+                            .frame(width: 14, height: 14)
+                            .overlay(
+                                Circle().strokeBorder(
+                                    selectedColor == color ? Color.primary.opacity(0.6) : Color.clear,
+                                    lineWidth: 1.5
+                                )
+                            )
+                            .onTapGesture { selectedColor = color }
+                    }
                 }
+            }
 
             Divider().opacity(0.3)
 
@@ -60,7 +78,7 @@ class QuickInputWindowController {
     private var window: KeyablePanel?
     private var localEventMonitor: Any?
 
-    func show(onSave: @escaping (String) -> Void) {
+    func show(onSave: @escaping (String, String) -> Void) {
         if window != nil { return }
 
         let panel = KeyablePanel(
@@ -77,8 +95,8 @@ class QuickInputWindowController {
         panel.hasShadow = true
 
         let view = QuickInputView(
-            onSave: { [weak self] text in
-                onSave(text)
+            onSave: { [weak self] text, color in
+                onSave(text, color)
                 self?.close()
             },
             onCancel: { [weak self] in

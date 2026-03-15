@@ -48,12 +48,12 @@ class MemoStore: ObservableObject {
 
     // MARK: - Create
 
-    func createMemo(content: String) {
+    func createMemo(content: String, color: String = "#FFF9C4") {
         let memo = MemoEntity(context: context)
         memo.id = UUID()
         memo.content = content
         memo.status = "active"
-        memo.color = "#FFF9C4"
+        memo.color = color
         memo.createdAt = Date()
 
         let position = defaultPosition()

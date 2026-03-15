@@ -1,11 +1,15 @@
 import SwiftUI
 import AppKit
+import CoreData
 
 // MARK: - ArchiveView
 
 struct ArchiveView: View {
     @ObservedObject var memoStore: MemoStore
-    @State private var selectedTab = 0
+    @Binding var selectedTab: Int
+
+    @State private var editingMemoID: NSManagedObjectID? = nil
+    @State private var editText: String = ""
 
     var body: some View {
         VStack(spacing: 0) {
@@ -42,10 +46,42 @@ struct ArchiveView: View {
                                 .fill(Color(hex: memo.color))
                                 .frame(width: 5, height: 32)
 
-                            Text(memo.content)
+                            if editingMemoID == memo.objectID {
+                                TextField("", text: $editText, onCommit: {
+                                    memoStore.updateContent(memo, content: editText)
+                                    editingMemoID = nil
+                                })
+                                .textFieldStyle(.plain)
                                 .font(.system(size: 13, design: .rounded))
-                                .lineLimit(2)
                                 .frame(maxWidth: .infinity, alignment: .leading)
+                            } else {
+                                Text(memo.content)
+                                    .font(.system(size: 13, design: .rounded))
+                                    .lineLimit(2)
+                                    .frame(maxWidth: .infinity, alignment: .leading)
+                                    .contentShape(Rectangle())
+                                    .onTapGesture {
+                                        editText = memo.content
+                                        editingMemoID = memo.objectID
+                                    }
+                            }
+
+                            HStack(spacing: 4) {
+                                ForEach(StickyColor.allCases, id: \.rawValue) { color in
+                                    Circle()
+                                        .fill(Color(hex: color.rawValue))
+                                        .frame(width: 12, height: 12)
+                                        .overlay(
+                                            Circle().strokeBorder(
+                                                memo.color == color.rawValue ? Color.primary : Color.clear,
+                                                lineWidth: 1.5
+                                            )
+                                        )
+                                        .onTapGesture {
+                                            memoStore.updateColor(memo, color: color.rawValue)
+                                        }
+                                }
+                            }
 
                             Button(action: {
                                 memoStore.completeMemoFromArchive(memo)
@@ -183,6 +219,7 @@ struct ArchiveView: View {
 
 class ArchiveWindowController: NSWindowController {
     private let memoStore: MemoStore
+    private var _selectedTab: Int = 0
 
     init(memoStore: MemoStore) {
         self.memoStore = memoStore
@@ -195,14 +232,27 @@ class ArchiveWindowController: NSWindowController {
         )
         window.title = "Poco - メモ一覧"
         window.center()
-        window.contentView = NSHostingView(rootView: ArchiveView(memoStore: memoStore))
 
         super.init(window: window)
+
+        // Use a class-level binding that captures self
+        let binding = Binding<Int>(
+            get: { [weak self] in self?._selectedTab ?? 0 },
+            set: { [weak self] in self?._selectedTab = $0 }
+        )
+        window.contentView = NSHostingView(rootView: ArchiveView(memoStore: memoStore, selectedTab: binding))
     }
 
     required init?(coder: NSCoder) { fatalError() }
 
-    func show() {
+    func show(tab: Int = 0) {
+        _selectedTab = tab
+        // Recreate content view to pick up new tab
+        let binding = Binding<Int>(
+            get: { [weak self] in self?._selectedTab ?? 0 },
+            set: { [weak self] in self?._selectedTab = $0 }
+        )
+        window?.contentView = NSHostingView(rootView: ArchiveView(memoStore: memoStore, selectedTab: binding))
         window?.makeKeyAndOrderFront(nil)
         NSApp.activate(ignoringOtherApps: true)
     }

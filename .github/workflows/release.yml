@@ -1,0 +1,48 @@
+name: Build and Release
+
+on:
+  push:
+    tags:
+      - 'v*'  # v1.0.0 のようなタグをプッシュしたときだけリリース
+
+jobs:
+  build:
+    runs-on: macos-15  # macOS Sequoia / Apple Silicon
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Select Xcode
+        run: sudo xcode-select -s /Applications/Xcode.app
+
+      - name: Build (release)
+        run: swift build -c release
+
+      - name: Create .app bundle
+        run: |
+          APP_DIR="Poco.app/Contents/MacOS"
+          mkdir -p "$APP_DIR"
+          mkdir -p "Poco.app/Contents/Resources"
+          cp .build/release/Poco "$APP_DIR/Poco"
+          cp Info.plist "Poco.app/Contents/Info.plist"
+          # Core Data モデルをコピー
+          cp -r Sources/Poco/Resources/ "Poco.app/Contents/Resources/" 2>/dev/null || true
+
+      - name: Zip .app
+        run: zip -r Poco.zip Poco.app
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: Poco.zip
+          name: "Poco ${{ github.ref_name }}"
+          body: |
+            ## インストール方法
+            1. `Poco.zip` をダウンロード・展開
+            2. `Poco.app` を `/Applications` にドラッグ
+            3. 初回起動時は右クリック→「開く」で Gatekeeper を回避
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

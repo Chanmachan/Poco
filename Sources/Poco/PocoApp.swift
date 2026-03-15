@@ -29,6 +29,9 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     private var stickyNoteControllers: [NSManagedObjectID: StickyNoteWindowController] = [:]
     private var cancellables = Set<AnyCancellable>()
 
+    /// Active color filter hex string. nil = show all.
+    private var activeColorFilter: String? = nil
+
     // MARK: - Launch
 
     func applicationWillFinishLaunching(_ notification: Notification) {
@@ -44,7 +47,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         statusBarController = StatusBarController(
             memoStore: memoStore,
             openArchiveHandler: { [weak self] in self?.openArchive() },
-            showQuickInputHandler: { [weak self] in self?.showQuickInput() }
+            showQuickInputHandler: { [weak self] in self?.showQuickInput() },
+            colorFilterHandler: { [weak self] hex in self?.applyColorFilter(hex) }
         )
 
         // Global shortcut (⌃⌥N)
@@ -82,20 +86,34 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         archiveWindowController?.show()
     }
 
+    // MARK: - Color Filter
+
+    private func applyColorFilter(_ hex: String?) {
+        activeColorFilter = hex
+        syncStickyWindows(memos: memoStore.activeMemos)
+    }
+
     // MARK: - Sticky Note Window Sync
 
     private func syncStickyWindows(memos: [MemoEntity]) {
-        let currentIDs = Set(stickyNoteControllers.keys)
-        let newIDs = Set(memos.map { $0.objectID })
+        let filteredMemos: [MemoEntity]
+        if let filter = activeColorFilter {
+            filteredMemos = memos.filter { $0.color == filter }
+        } else {
+            filteredMemos = memos
+        }
 
-        // Remove windows for memos no longer active
-        for id in currentIDs.subtracting(newIDs) {
+        let currentIDs = Set(stickyNoteControllers.keys)
+        let visibleIDs = Set(filteredMemos.map { $0.objectID })
+
+        // Remove windows for memos no longer active or filtered out
+        for id in currentIDs.subtracting(visibleIDs) {
             stickyNoteControllers[id]?.close()
             stickyNoteControllers.removeValue(forKey: id)
         }
 
-        // Add windows for new active memos
-        for memo in memos where !currentIDs.contains(memo.objectID) {
+        // Add windows for new visible memos
+        for memo in filteredMemos where !currentIDs.contains(memo.objectID) {
             let controller = StickyNoteWindowController(memo: memo, memoStore: memoStore, onTap: { [weak self] in
                 self?.openArchive()
             })

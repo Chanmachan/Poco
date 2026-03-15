@@ -18,5 +18,9 @@
     <string>Poco はグローバルショートカット（⌃⌥N）を使用するためにアクセシビリティへのアクセスが必要です。</string>
     <key>NSHumanReadableCopyright</key>
     <string>Copyright © 2026 Poco. All rights reserved.</string>
+    <key>CFBundleIconFile</key>
+    <string>AppIcon</string>
+    <key>CFBundleIconName</key>
+    <string>AppIcon</string>
 </dict>
 </plist>

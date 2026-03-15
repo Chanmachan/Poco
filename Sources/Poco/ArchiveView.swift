@@ -17,6 +17,20 @@ struct ArchiveView: View {
     @State private var editingMemoID: NSManagedObjectID? = nil
     @State private var editText: String = ""
 
+    // Color filter
+    @State private var colorFilter: String? = nil
+
+    // Bulk selection
+    @State private var isSelectMode = false
+    @State private var selectedIDs = Set<NSManagedObjectID>()
+
+    private var filteredMemos: [MemoEntity] {
+        if let filter = colorFilter {
+            return memoStore.activeMemos.filter { $0.color == filter }
+        }
+        return memoStore.activeMemos
+    }
+
     var body: some View {
         VStack(spacing: 0) {
             Picker("", selection: $selectedTab) {
@@ -44,99 +58,204 @@ struct ArchiveView: View {
         }
     }
 
+    // MARK: - Color Filter Bar
+
+    private var colorFilterBar: some View {
+        HStack(spacing: 8) {
+            Button("すべて") { colorFilter = nil }
+                .buttonStyle(.plain)
+                .font(.system(size: 11, weight: colorFilter == nil ? .semibold : .regular))
+                .foregroundColor(colorFilter == nil ? .primary : .secondary)
+
+            ForEach(StickyColor.allCases, id: \.rawValue) { color in
+                Circle()
+                    .fill(Color(hex: color.rawValue))
+                    .frame(width: 16, height: 16)
+                    .overlay(
+                        Circle().strokeBorder(
+                            colorFilter == color.rawValue ? Color.primary : Color.clear,
+                            lineWidth: 2
+                        )
+                    )
+                    .onTapGesture {
+                        colorFilter = colorFilter == color.rawValue ? nil : color.rawValue
+                        // Reset selection when filter changes
+                        selectedIDs.removeAll()
+                    }
+            }
+
+            Spacer()
+
+            Button(isSelectMode ? "キャンセル" : "選択") {
+                isSelectMode.toggle()
+                selectedIDs.removeAll()
+            }
+            .buttonStyle(.plain)
+            .font(.system(size: 11, weight: .medium))
+            .foregroundColor(.blue)
+
+            if isSelectMode {
+                Button("全選択") {
+                    selectedIDs = Set(filteredMemos.map { $0.objectID })
+                }
+                .buttonStyle(.plain)
+                .font(.system(size: 11, weight: .medium))
+                .foregroundColor(.blue)
+            }
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 8)
+    }
+
+    // MARK: - Active Tab
+
     @ViewBuilder
     private var activeTab: some View {
-        if memoStore.activeMemos.isEmpty {
-            emptyStateView(icon: "note.text", message: "アクティブなメモはありません")
-        } else {
-            ScrollView {
-                LazyVStack(spacing: 8) {
-                    ForEach(memoStore.activeMemos, id: \.objectID) { memo in
-                        HStack(spacing: 12) {
-                            RoundedRectangle(cornerRadius: 3)
-                                .fill(Color(hex: memo.color))
-                                .frame(width: 5, height: 32)
+        VStack(spacing: 0) {
+            colorFilterBar
+            Divider()
 
-                            if editingMemoID == memo.objectID {
-                                TextField("", text: $editText, onCommit: {
-                                    memoStore.updateContent(memo, content: editText)
-                                    editingMemoID = nil
-                                })
-                                .textFieldStyle(.plain)
-                                .font(.system(size: 13, design: .rounded))
-                                .frame(maxWidth: .infinity, alignment: .leading)
-                            } else {
-                                Text(memo.content)
-                                    .font(.system(size: 13, design: .rounded))
-                                    .lineLimit(2)
-                                    .frame(maxWidth: .infinity, alignment: .leading)
-                                    .contentShape(Rectangle())
-                                    .onTapGesture {
-                                        editText = memo.content
-                                        editingMemoID = memo.objectID
-                                    }
-                            }
-
-                            HStack(spacing: 4) {
-                                ForEach(StickyColor.allCases, id: \.rawValue) { color in
-                                    Circle()
-                                        .fill(Color(hex: color.rawValue))
-                                        .frame(width: 12, height: 12)
-                                        .overlay(
-                                            Circle().strokeBorder(
-                                                memo.color == color.rawValue ? Color.primary : Color.clear,
-                                                lineWidth: 1.5
-                                            )
-                                        )
+            if filteredMemos.isEmpty {
+                emptyStateView(icon: "note.text", message: colorFilter != nil ? "この色のメモはありません" : "アクティブなメモはありません")
+            } else {
+                ScrollView {
+                    LazyVStack(spacing: 8) {
+                        ForEach(filteredMemos, id: \.objectID) { memo in
+                            HStack(spacing: 12) {
+                                // Checkbox in select mode
+                                if isSelectMode {
+                                    Image(systemName: selectedIDs.contains(memo.objectID) ? "checkmark.circle.fill" : "circle")
+                                        .font(.system(size: 16))
+                                        .foregroundColor(selectedIDs.contains(memo.objectID) ? .blue : .secondary)
                                         .onTapGesture {
-                                            memoStore.updateColor(memo, color: color.rawValue)
+                                            if selectedIDs.contains(memo.objectID) {
+                                                selectedIDs.remove(memo.objectID)
+                                            } else {
+                                                selectedIDs.insert(memo.objectID)
+                                            }
                                         }
                                 }
-                            }
 
-                            Button(action: {
-                                memoStore.completeMemoFromArchive(memo)
-                            }) {
-                                Text("完了")
-                                    .font(.system(size: 11, weight: .medium))
-                                    .foregroundColor(.green)
-                                    .padding(.horizontal, 12)
-                                    .padding(.vertical, 5)
-                                    .background(Capsule().fill(.thinMaterial))
-                                    .overlay(Capsule().strokeBorder(Color.green.opacity(0.3), lineWidth: 0.5))
-                            }
-                            .buttonStyle(.plain)
+                                RoundedRectangle(cornerRadius: 3)
+                                    .fill(Color(hex: memo.color))
+                                    .frame(width: 5, height: 32)
 
-                            Button(action: {
-                                memoStore.deleteMemo(memo)
-                            }) {
-                                Image(systemName: "trash")
-                                    .font(.system(size: 12))
-                                    .foregroundColor(.red.opacity(0.7))
-                                    .padding(6)
-                                    .background(Capsule().fill(.thinMaterial))
-                                    .overlay(Capsule().strokeBorder(Color.red.opacity(0.2), lineWidth: 0.5))
+                                if editingMemoID == memo.objectID {
+                                    TextField("", text: $editText, onCommit: {
+                                        memoStore.updateContent(memo, content: editText)
+                                        editingMemoID = nil
+                                    })
+                                    .textFieldStyle(.plain)
+                                    .font(.system(size: 13, design: .rounded))
+                                    .frame(maxWidth: .infinity, alignment: .leading)
+                                } else {
+                                    Text(memo.content)
+                                        .font(.system(size: 13, design: .rounded))
+                                        .lineLimit(2)
+                                        .frame(maxWidth: .infinity, alignment: .leading)
+                                        .contentShape(Rectangle())
+                                        .onTapGesture {
+                                            if isSelectMode {
+                                                if selectedIDs.contains(memo.objectID) {
+                                                    selectedIDs.remove(memo.objectID)
+                                                } else {
+                                                    selectedIDs.insert(memo.objectID)
+                                                }
+                                            } else {
+                                                editText = memo.content
+                                                editingMemoID = memo.objectID
+                                            }
+                                        }
+                                }
+
+                                if !isSelectMode {
+                                    HStack(spacing: 4) {
+                                        ForEach(StickyColor.allCases, id: \.rawValue) { color in
+                                            Circle()
+                                                .fill(Color(hex: color.rawValue))
+                                                .frame(width: 12, height: 12)
+                                                .overlay(
+                                                    Circle().strokeBorder(
+                                                        memo.color == color.rawValue ? Color.primary : Color.clear,
+                                                        lineWidth: 1.5
+                                                    )
+                                                )
+                                                .onTapGesture {
+                                                    memoStore.updateColor(memo, color: color.rawValue)
+                                                }
+                                        }
+                                    }
+
+                                    Button(action: {
+                                        memoStore.completeMemoFromArchive(memo)
+                                    }) {
+                                        Text("完了")
+                                            .font(.system(size: 11, weight: .medium))
+                                            .foregroundColor(.green)
+                                            .padding(.horizontal, 12)
+                                            .padding(.vertical, 5)
+                                            .background(Capsule().fill(.thinMaterial))
+                                            .overlay(Capsule().strokeBorder(Color.green.opacity(0.3), lineWidth: 0.5))
+                                    }
+                                    .buttonStyle(.plain)
+
+                                    Button(action: {
+                                        memoStore.deleteMemo(memo)
+                                    }) {
+                                        Image(systemName: "trash")
+                                            .font(.system(size: 12))
+                                            .foregroundColor(.red.opacity(0.7))
+                                            .padding(6)
+                                            .background(Capsule().fill(.thinMaterial))
+                                            .overlay(Capsule().strokeBorder(Color.red.opacity(0.2), lineWidth: 0.5))
+                                    }
+                                    .buttonStyle(.plain)
+                                }
                             }
-                            .buttonStyle(.plain)
+                            .padding(.horizontal, 14)
+                            .padding(.vertical, 10)
+                            .background(
+                                RoundedRectangle(cornerRadius: 12)
+                                    .fill(.ultraThinMaterial)
+                                    .overlay(
+                                        RoundedRectangle(cornerRadius: 12)
+                                            .strokeBorder(Color.primary.opacity(0.08), lineWidth: 0.5)
+                                    )
+                                    .shadow(color: .black.opacity(0.06), radius: 8, x: 0, y: 3)
+                            )
                         }
-                        .padding(.horizontal, 14)
-                        .padding(.vertical, 10)
-                        .background(
-                            RoundedRectangle(cornerRadius: 12)
-                                .fill(.ultraThinMaterial)
-                                .overlay(
-                                    RoundedRectangle(cornerRadius: 12)
-                                        .strokeBorder(Color.primary.opacity(0.08), lineWidth: 0.5)
-                                )
-                                .shadow(color: .black.opacity(0.06), radius: 8, x: 0, y: 3)
-                        )
                     }
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 12)
                 }
-                .padding(.horizontal, 16)
-                .padding(.vertical, 12)
+            }
+
+            // Bulk delete bar
+            if isSelectMode && !selectedIDs.isEmpty {
+                Divider()
+                HStack {
+                    Spacer()
+                    Button("選択した\(selectedIDs.count)件を削除") {
+                        for id in selectedIDs {
+                            if let memo = memoStore.activeMemos.first(where: { $0.objectID == id }) {
+                                memoStore.deleteMemo(memo)
+                            }
+                        }
+                        selectedIDs.removeAll()
+                        isSelectMode = false
+                    }
+                    .buttonStyle(.plain)
+                    .font(.system(size: 13, weight: .medium))
+                    .foregroundColor(.red)
+                    .padding(.vertical, 10)
+                    Spacer()
+                }
+                .background(Color(nsColor: .windowBackgroundColor))
             }
         }
     }
+
+    // MARK: - Completed Tab
 
     @ViewBuilder
     private var completedTab: some View {

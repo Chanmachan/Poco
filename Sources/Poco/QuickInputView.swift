@@ -105,6 +105,9 @@ class QuickInputWindowController {
         )
 
         let hostingView = NSHostingView(rootView: view)
+        hostingView.wantsLayer = true
+        hostingView.layer?.cornerRadius = 16
+        hostingView.layer?.masksToBounds = true
         panel.contentView = hostingView
 
         // fittingSize でパネルサイズを合わせる

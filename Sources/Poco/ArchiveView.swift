@@ -20,9 +20,13 @@ struct ArchiveView: View {
     // Color filter
     @State private var colorFilter: String? = nil
 
-    // Bulk selection
+    // Bulk selection (active tab)
     @State private var isSelectMode = false
     @State private var selectedIDs = Set<NSManagedObjectID>()
+
+    // Bulk selection (completed tab)
+    @State private var isCompletedSelectMode = false
+    @State private var completedSelectedIDs = Set<NSManagedObjectID>()
 
     private var filteredMemos: [MemoEntity] {
         if let filter = colorFilter {
@@ -288,84 +292,179 @@ struct ArchiveView: View {
             emptyStateView(icon: "checkmark.circle", message: "完了済みメモはありません")
         } else {
             VStack(spacing: 0) {
-                // 全件削除ボタン
-                HStack {
-                    Spacer()
-                    Button(action: {
-                        memoStore.archivedMemos.forEach { memoStore.deleteMemo($0) }
-                    }) {
-                        Label("完了済みを全て削除", systemImage: "trash")
-                            .font(.system(size: 11, weight: .medium))
-                            .foregroundColor(.red)
-                            .padding(.horizontal, 14)
-                            .padding(.vertical, 6)
-                            .background(Capsule().fill(.thinMaterial))
-                            .overlay(Capsule().strokeBorder(Color.red.opacity(0.4), lineWidth: 0.8))
-                    }
-                    .buttonStyle(.plain)
-                }
-                .padding(.horizontal, 16)
-                .padding(.top, 10)
-
+                completedTabToolbar()
                 ScrollView {
                     LazyVStack(spacing: 8) {
                         ForEach(memoStore.archivedMemos, id: \.objectID) { memo in
-                        HStack(spacing: 12) {
-                            VStack(alignment: .leading, spacing: 3) {
-                                Text(memo.content)
-                                    .font(.system(size: 13, design: .rounded))
-                                    .lineLimit(2)
-                                if let completedAt = memo.completedAt {
-                                    Text("完了: " + dateString(from: completedAt))
-                                        .font(.caption)
-                                        .foregroundColor(.secondary)
-                                }
-                            }
-                            .frame(maxWidth: .infinity, alignment: .leading)
-
-                            Button(action: {
-                                memoStore.restoreMemo(memo)
-                            }) {
-                                Text("未完了に戻す")
-                                    .font(.system(size: 11, weight: .medium))
-                                    .foregroundColor(.blue)
-                                    .padding(.horizontal, 12)
-                                    .padding(.vertical, 5)
-                                    .background(Capsule().fill(.thinMaterial))
-                                    .overlay(Capsule().strokeBorder(Color.blue.opacity(0.3), lineWidth: 0.5))
-                            }
-                            .buttonStyle(.plain)
-
-                            Button(action: {
-                                memoStore.deleteMemo(memo)
-                            }) {
-                                Image(systemName: "trash")
-                                    .font(.system(size: 12))
-                                    .foregroundColor(.red.opacity(0.7))
-                                    .padding(6)
-                                    .background(Capsule().fill(.thinMaterial))
-                                    .overlay(Capsule().strokeBorder(Color.red.opacity(0.2), lineWidth: 0.5))
-                            }
-                            .buttonStyle(.plain)
+                            completedRow(memo)
                         }
-                        .padding(.horizontal, 14)
-                        .padding(.vertical, 10)
-                        .background(
-                            RoundedRectangle(cornerRadius: 12)
-                                .fill(.ultraThinMaterial)
-                                .overlay(
-                                    RoundedRectangle(cornerRadius: 12)
-                                        .strokeBorder(Color.primary.opacity(0.08), lineWidth: 0.5)
-                                )
-                                .shadow(color: .black.opacity(0.06), radius: 8, x: 0, y: 3)
-                        )
                     }
+                    .padding(EdgeInsets(top: 12, leading: 16, bottom: 12, trailing: 16))
                 }
-                .padding(.horizontal, 16)
-                .padding(.vertical, 12)
+                if isCompletedSelectMode && !completedSelectedIDs.isEmpty {
+                    completedBulkBar()
                 }
             }
         }
+    }
+
+    private func completedTabToolbar() -> some View {
+        HStack(spacing: 8) {
+            Button(isCompletedSelectMode ? "キャンセル" : "選択") {
+                isCompletedSelectMode.toggle()
+                completedSelectedIDs.removeAll()
+            }
+            .buttonStyle(.plain)
+            .font(.system(size: 11, weight: .medium))
+            .foregroundColor(.blue)
+
+            if isCompletedSelectMode {
+                Button(completedSelectedIDs.count == memoStore.archivedMemos.count ? "選択解除" : "全選択") {
+                    if completedSelectedIDs.count == memoStore.archivedMemos.count {
+                        completedSelectedIDs.removeAll()
+                    } else {
+                        completedSelectedIDs = Set(memoStore.archivedMemos.map { $0.objectID })
+                    }
+                }
+                .buttonStyle(.plain)
+                .font(.system(size: 11, weight: .medium))
+                .foregroundColor(.blue)
+            }
+
+            Spacer()
+
+            if !isCompletedSelectMode {
+                Button(action: {
+                    memoStore.archivedMemos.forEach { memoStore.deleteMemo($0) }
+                }) {
+                    Label("全て削除", systemImage: "trash")
+                        .font(.system(size: 11, weight: .medium))
+                        .foregroundColor(.red)
+                        .padding(.horizontal, 14)
+                        .padding(.vertical, 6)
+                        .background(Capsule().fill(.thinMaterial))
+                        .overlay(Capsule().strokeBorder(Color.red.opacity(0.4), lineWidth: 0.8))
+                }
+                .buttonStyle(.plain)
+            }
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 8)
+    }
+
+    private func completedRow(_ memo: MemoEntity) -> some View {
+        let isSelected = completedSelectedIDs.contains(memo.objectID)
+        return HStack(spacing: 12) {
+            if isCompletedSelectMode {
+                Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
+                    .font(.system(size: 16))
+                    .foregroundColor(isSelected ? .blue : .secondary)
+            }
+
+            VStack(alignment: .leading, spacing: 3) {
+                Text(memo.content)
+                    .font(.system(size: 13, design: .rounded))
+                    .lineLimit(2)
+                if let completedAt = memo.completedAt {
+                    Text("完了: " + dateString(from: completedAt))
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+
+            if !isCompletedSelectMode {
+                Button(action: {
+                    memoStore.restoreMemo(memo)
+                }) {
+                    Text("未完了に戻す")
+                        .font(.system(size: 11, weight: .medium))
+                        .foregroundColor(.blue)
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 5)
+                        .background(Capsule().fill(.thinMaterial))
+                        .overlay(Capsule().strokeBorder(Color.blue.opacity(0.3), lineWidth: 0.5))
+                }
+                .buttonStyle(.plain)
+
+                Button(action: {
+                    memoStore.deleteMemo(memo)
+                }) {
+                    Image(systemName: "trash")
+                        .font(.system(size: 12))
+                        .foregroundColor(.red.opacity(0.7))
+                        .padding(6)
+                        .background(Capsule().fill(.thinMaterial))
+                        .overlay(Capsule().strokeBorder(Color.red.opacity(0.2), lineWidth: 0.5))
+                }
+                .buttonStyle(.plain)
+            }
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 10)
+        .background(
+            RoundedRectangle(cornerRadius: 12)
+                .fill(isSelected ? AnyShapeStyle(Color.blue.opacity(0.08)) : AnyShapeStyle(.ultraThinMaterial))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 12)
+                        .strokeBorder(Color.primary.opacity(0.08), lineWidth: 0.5)
+                )
+                .shadow(color: .black.opacity(0.06), radius: 8, x: 0, y: 3)
+        )
+        .contentShape(Rectangle())
+        .onTapGesture {
+            if isCompletedSelectMode {
+                if isSelected {
+                    completedSelectedIDs.remove(memo.objectID)
+                } else {
+                    completedSelectedIDs.insert(memo.objectID)
+                }
+            }
+        }
+    }
+
+    private func completedBulkBar() -> some View {
+        HStack(spacing: 12) {
+            Button(action: {
+                for id in completedSelectedIDs {
+                    if let memo = memoStore.archivedMemos.first(where: { $0.objectID == id }) {
+                        memoStore.restoreMemo(memo)
+                    }
+                }
+                completedSelectedIDs.removeAll()
+                isCompletedSelectMode = false
+            }) {
+                Label("未完了に戻す (\(completedSelectedIDs.count)件)", systemImage: "arrow.uturn.backward")
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundColor(.blue)
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 8)
+                    .background(Capsule().fill(.thinMaterial))
+                    .overlay(Capsule().strokeBorder(Color.blue.opacity(0.4), lineWidth: 0.8))
+            }
+            .buttonStyle(.plain)
+
+            Button(action: {
+                for id in completedSelectedIDs {
+                    if let memo = memoStore.archivedMemos.first(where: { $0.objectID == id }) {
+                        memoStore.deleteMemo(memo)
+                    }
+                }
+                completedSelectedIDs.removeAll()
+                isCompletedSelectMode = false
+            }) {
+                Label("削除 (\(completedSelectedIDs.count)件)", systemImage: "trash")
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundColor(.red)
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 8)
+                    .background(Capsule().fill(.thinMaterial))
+                    .overlay(Capsule().strokeBorder(Color.red.opacity(0.4), lineWidth: 0.8))
+            }
+            .buttonStyle(.plain)
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 10)
     }
 
     private func emptyStateView(icon: String, message: String) -> some View {

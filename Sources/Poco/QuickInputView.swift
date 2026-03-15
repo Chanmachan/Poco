@@ -54,7 +54,12 @@ struct QuickInputView: View {
         .padding(.horizontal, 18)
         .padding(.vertical, 14)
         .frame(width: 340)
-        .background(.ultraThinMaterial)
+        .background(
+            ZStack {
+                Color.white.opacity(0.65)
+            }
+            .background(.regularMaterial)
+        )
         .overlay(
             RoundedRectangle(cornerRadius: 16)
                 .strokeBorder(Color.white.opacity(0.2), lineWidth: 0.8)

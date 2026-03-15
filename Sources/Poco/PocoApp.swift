@@ -24,6 +24,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     private var globalShortcutManager: GlobalShortcutManager?
     private var quickInputController: QuickInputWindowController?
     private var archiveWindowController: ArchiveWindowController?
+    private var widgetController: StickyWidgetWindowController?
 
     // Tracks open sticky note windows by Core Data object ID
     private var stickyNoteControllers: [NSManagedObjectID: StickyNoteWindowController] = [:]
@@ -43,12 +44,16 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         // Core Data + store
         memoStore = MemoStore(persistence: PersistenceController.shared)
 
+        // Widget controller
+        widgetController = StickyWidgetWindowController(memoStore: memoStore)
+
         // Status bar
         statusBarController = StatusBarController(
             memoStore: memoStore,
             openArchiveHandler: { [weak self] in self?.openArchive() },
             showQuickInputHandler: { [weak self] in self?.showQuickInput() },
-            colorFilterHandler: { [weak self] hex in self?.applyColorFilter(hex) }
+            colorFilterHandler: { [weak self] hex in self?.applyColorFilter(hex) },
+            toggleWidgetHandler: { [weak self] in self?.toggleWidget() }
         )
 
         // Global shortcut (⌃⌥N)
@@ -84,6 +89,16 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
     private func openArchive() {
         archiveWindowController?.show()
+    }
+
+    // MARK: - Widget
+
+    private func toggleWidget() {
+        widgetController?.toggle(
+            colorFilter: activeColorFilter,
+            onCompleteMemo: { [weak self] memo in self?.memoStore.completeMemo(memo) },
+            onTapMemo: { [weak self] _ in self?.openArchive() }
+        )
     }
 
     // MARK: - Color Filter

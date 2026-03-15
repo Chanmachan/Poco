@@ -7,17 +7,20 @@ class StatusBarController {
     private let openArchiveHandler: () -> Void
     private let showQuickInputHandler: () -> Void
     private let colorFilterHandler: (String?) -> Void
+    private let toggleWidgetHandler: () -> Void
 
     init(
         memoStore: MemoStore,
         openArchiveHandler: @escaping () -> Void,
         showQuickInputHandler: @escaping () -> Void,
-        colorFilterHandler: @escaping (String?) -> Void
+        colorFilterHandler: @escaping (String?) -> Void,
+        toggleWidgetHandler: @escaping () -> Void
     ) {
         self.memoStore = memoStore
         self.openArchiveHandler = openArchiveHandler
         self.showQuickInputHandler = showQuickInputHandler
         self.colorFilterHandler = colorFilterHandler
+        self.toggleWidgetHandler = toggleWidgetHandler
 
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
         configureButton()
@@ -79,6 +82,16 @@ class StatusBarController {
 
         menu.addItem(.separator())
 
+        let widgetItem = NSMenuItem(
+            title: "ウィジェット表示/非表示",
+            action: #selector(handleToggleWidget),
+            keyEquivalent: ""
+        )
+        widgetItem.target = self
+        menu.addItem(widgetItem)
+
+        menu.addItem(.separator())
+
         let archiveItem = NSMenuItem(
             title: "アーカイブを開く",
             action: #selector(handleOpenArchive),
@@ -107,6 +120,10 @@ class StatusBarController {
 
     @objc private func handleOpenArchive() {
         openArchiveHandler()
+    }
+
+    @objc private func handleToggleWidget() {
+        toggleWidgetHandler()
     }
 
     @objc private func handleFilterAll() {

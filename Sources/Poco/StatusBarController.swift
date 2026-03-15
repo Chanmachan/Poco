@@ -8,7 +8,10 @@ class StatusBarController {
     private let showQuickInputHandler: () -> Void
     private let colorFilterHandler: (String?) -> Void
     private let toggleWidgetHandler: () -> Void
+    private let toggleDisplayModeHandler: () -> Void
     private let settingsHandler: () -> Void
+    private let isWidgetOnlyModeProvider: () -> Bool
+    private var displayModeItem: NSMenuItem?
 
     init(
         memoStore: MemoStore,
@@ -16,14 +19,18 @@ class StatusBarController {
         showQuickInputHandler: @escaping () -> Void,
         colorFilterHandler: @escaping (String?) -> Void,
         toggleWidgetHandler: @escaping () -> Void,
-        settingsHandler: @escaping () -> Void
+        toggleDisplayModeHandler: @escaping () -> Void,
+        settingsHandler: @escaping () -> Void,
+        isWidgetOnlyModeProvider: @escaping () -> Bool
     ) {
         self.memoStore = memoStore
         self.openArchiveHandler = openArchiveHandler
         self.showQuickInputHandler = showQuickInputHandler
         self.colorFilterHandler = colorFilterHandler
         self.toggleWidgetHandler = toggleWidgetHandler
+        self.toggleDisplayModeHandler = toggleDisplayModeHandler
         self.settingsHandler = settingsHandler
+        self.isWidgetOnlyModeProvider = isWidgetOnlyModeProvider
 
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
         configureButton()
@@ -95,6 +102,34 @@ class StatusBarController {
 
         menu.addItem(.separator())
 
+        // 表示モード（チェックマーク式）
+        let modeHeader = NSMenuItem(title: "付箋の表示方法", action: nil, keyEquivalent: "")
+        modeHeader.isEnabled = false
+        menu.addItem(modeHeader)
+
+        let widgetModeItem = NSMenuItem(
+            title: "ウィジェットのみ",
+            action: #selector(handleToggleDisplayMode),
+            keyEquivalent: ""
+        )
+        widgetModeItem.target = self
+        widgetModeItem.state = isWidgetOnlyModeProvider() ? .on : .off
+        widgetModeItem.tag = 1
+        self.displayModeItem = widgetModeItem
+        menu.addItem(widgetModeItem)
+
+        let desktopModeItem = NSMenuItem(
+            title: "デスクトップに個別表示",
+            action: #selector(handleToggleDisplayMode),
+            keyEquivalent: ""
+        )
+        desktopModeItem.target = self
+        desktopModeItem.state = isWidgetOnlyModeProvider() ? .off : .on
+        desktopModeItem.tag = 2
+        menu.addItem(desktopModeItem)
+
+        menu.addItem(.separator())
+
         let settingsItem = NSMenuItem(
             title: "設定...",
             action: #selector(handleSettings),
@@ -139,6 +174,17 @@ class StatusBarController {
 
     @objc private func handleToggleWidget() {
         toggleWidgetHandler()
+    }
+
+    @objc private func handleToggleDisplayMode() {
+        toggleDisplayModeHandler()
+    }
+
+    func updateDisplayModeCheckmark(isWidgetOnly: Bool) {
+        statusItem.menu?.items.forEach { item in
+            if item.tag == 1 { item.state = isWidgetOnly ? .on : .off }
+            if item.tag == 2 { item.state = isWidgetOnly ? .off : .on }
+        }
     }
 
     @objc private func handleFilterAll() {

@@ -76,7 +76,7 @@ struct StickyNoteView: View {
         .padding(.vertical, 8)
         .frame(width: 260, height: 72)
         .background(.ultraThinMaterial)
-        .background(stickyColor.backgroundColor.opacity(0.35))
+        .background(stickyColor.backgroundColor.opacity(0.55))
         .overlay(
             RoundedRectangle(cornerRadius: 14)
                 .strokeBorder(Color.white.opacity(0.25), lineWidth: 0.8)

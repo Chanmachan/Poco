@@ -34,6 +34,14 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     /// Active color filter hex string. nil = show all.
     private var activeColorFilter: String? = nil
 
+    /// Display mode: true = widget only, false = individual sticky notes on desktop
+    private var isWidgetOnlyMode: Bool {
+        get { UserDefaults.standard.object(forKey: "displayModeWidgetOnly") == nil
+                ? true  // デフォルト: ウィジェットのみ
+                : UserDefaults.standard.bool(forKey: "displayModeWidgetOnly") }
+        set { UserDefaults.standard.set(newValue, forKey: "displayModeWidgetOnly") }
+    }
+
     // MARK: - Launch
 
     func applicationWillFinishLaunching(_ notification: Notification) {
@@ -55,7 +63,9 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             showQuickInputHandler: { [weak self] in self?.showQuickInput() },
             colorFilterHandler: { [weak self] hex in self?.applyColorFilter(hex) },
             toggleWidgetHandler: { [weak self] in self?.toggleWidget() },
-            settingsHandler: { [weak self] in self?.openSettings() }
+            toggleDisplayModeHandler: { [weak self] in self?.toggleDisplayMode() },
+            settingsHandler: { [weak self] in self?.openSettings() },
+            isWidgetOnlyModeProvider: { [weak self] in self?.isWidgetOnlyMode ?? true }
         )
 
         // Global shortcut (⌃⌥N)
@@ -76,6 +86,13 @@ class AppDelegate: NSObject, NSApplicationDelegate {
                 self?.syncStickyWindows(memos: memos)
             }
             .store(in: &cancellables)
+
+        // 起動時: ウィジェットのみモードならウィジェットを表示
+        if isWidgetOnlyMode {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in
+                self?.showWidgetIfNeeded()
+            }
+        }
     }
 
     // MARK: - Quick Input
@@ -112,6 +129,25 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         )
     }
 
+    private func showWidgetIfNeeded() {
+        widgetController?.show(
+            colorFilter: activeColorFilter,
+            onCompleteMemo: { [weak self] memo in self?.memoStore.completeMemo(memo) },
+            onTapMemo: { [weak self] _ in self?.openArchive() }
+        )
+    }
+
+    // MARK: - Display Mode
+
+    private func toggleDisplayMode() {
+        isWidgetOnlyMode = !isWidgetOnlyMode
+        statusBarController?.updateDisplayModeCheckmark(isWidgetOnly: isWidgetOnlyMode)
+        syncStickyWindows(memos: memoStore.activeMemos)
+        if isWidgetOnlyMode {
+            showWidgetIfNeeded()
+        }
+    }
+
     // MARK: - Color Filter
 
     private func applyColorFilter(_ hex: String?) {
@@ -122,6 +158,15 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     // MARK: - Sticky Note Window Sync
 
     private func syncStickyWindows(memos: [MemoEntity]) {
+        // ウィジェットのみモードの場合は個別付箋を全て閉じる
+        if isWidgetOnlyMode {
+            for (id, controller) in stickyNoteControllers {
+                controller.close()
+                stickyNoteControllers.removeValue(forKey: id)
+            }
+            return
+        }
+
         let filteredMemos: [MemoEntity]
         if let filter = activeColorFilter {
             filteredMemos = memos.filter { $0.color == filter }

@@ -135,32 +135,44 @@ class MemoStore: ObservableObject {
     // MARK: - Helpers
 
     private func defaultPosition() -> (x: Double, y: Double) {
-        guard let screen = NSScreen.main else {
-            return (100, 100)
-        }
+        guard let screen = NSScreen.main else { return (100, 100) }
+
         let noteW: Double = 260
         let noteH: Double = 72
-        let margin: Double = 16
+        let margin: Double = 20
+        let padding: Double = 16
 
-        // 画面右上から下に向けて配置
-        let startX = screen.visibleFrame.maxX - noteW - margin
-        let startY = screen.visibleFrame.maxY - noteH - margin
+        let frame = screen.visibleFrame
 
-        // 既存の active メモの位置を収集
-        let occupiedRects = activeMemos.map {
-            CGRect(x: $0.positionX, y: $0.positionY, width: noteW, height: noteH)
+        // 現在の全アクティブメモの占有矩形（移動済みのものも含む）
+        let occupied = activeMemos.map {
+            CGRect(x: $0.positionX, y: $0.positionY,
+                   width: noteW + margin, height: noteH + margin)
         }
 
-        // 重ならない位置を探す（右端から下に向かって）
-        var y = startY
-        while y > screen.visibleFrame.minY {
-            let candidate = CGRect(x: startX, y: y, width: noteW, height: noteH)
-            if !occupiedRects.contains(where: { $0.intersects(candidate) }) {
-                return (startX, y)
+        // 右上から列ごとにスキャン（右→左、上→下）
+        var col = 0
+        while true {
+            let x = frame.maxX - padding - noteW - Double(col) * (noteW + margin)
+
+            // 左端を超えたら配置不能 → 最終フォールバック
+            if x < frame.minX + padding {
+                let cx = frame.midX + Double.random(in: -100...100)
+                let cy = frame.midY + Double.random(in: -100...100)
+                return (cx, cy)
             }
-            y -= noteH + margin
+
+            var y = frame.maxY - padding - noteH
+            while y >= frame.minY + padding {
+                let candidate = CGRect(x: x, y: y,
+                                       width: noteW + margin, height: noteH + margin)
+                let overlaps = occupied.contains { $0.intersects(candidate) }
+                if !overlaps {
+                    return (x, y)
+                }
+                y -= noteH + margin
+            }
+            col += 1
         }
-        // 全部埋まっていたらオフセット付きでランダム配置
-        return (startX - Double.random(in: 0...100), startY - Double.random(in: 0...200))
     }
 }

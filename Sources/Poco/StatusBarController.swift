@@ -1,4 +1,5 @@
 import AppKit
+import SwiftUI
 
 class StatusBarController {
     private var statusItem: NSStatusItem
@@ -55,15 +56,24 @@ class StatusBarController {
         allItem.target = self
         menu.addItem(allItem)
 
-        // Color filter items
+        // Color filter items (circle icons)
         for color in StickyColor.allCases {
             let item = NSMenuItem(
-                title: color.displayName + "のみ",
+                title: "",
                 action: #selector(handleFilterColor(_:)),
                 keyEquivalent: ""
             )
             item.target = self
             item.representedObject = color.rawValue
+
+            let size = NSSize(width: 16, height: 16)
+            let image = NSImage(size: size, flipped: false) { rect in
+                let path = NSBezierPath(ovalIn: rect.insetBy(dx: 1, dy: 1))
+                NSColor(Color(hex: color.rawValue)).setFill()
+                path.fill()
+                return true
+            }
+            item.image = image
             menu.addItem(item)
         }
 

@@ -39,7 +39,8 @@ struct ArchiveView: View {
             }
             .pickerStyle(.segmented)
             .padding(.horizontal, 20)
-            .padding(.vertical, 14)
+            .padding(.vertical, 12)
+            .background(.ultraThinMaterial)
 
             Divider()
 
@@ -50,7 +51,7 @@ struct ArchiveView: View {
             }
         }
         .frame(width: 480, height: 520)
-        .background(Color(nsColor: .windowBackgroundColor))
+        .background(.regularMaterial)
         .onReceive(NotificationCenter.default.publisher(for: .archiveOpenTab)) { notification in
             if let tab = notification.object as? Int {
                 selectedTab = tab
@@ -250,7 +251,7 @@ struct ArchiveView: View {
                     .padding(.vertical, 10)
                     Spacer()
                 }
-                .background(Color(nsColor: .windowBackgroundColor))
+                .background(.regularMaterial)
             }
         }
     }
